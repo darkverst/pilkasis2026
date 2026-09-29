@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// School election settings (single row, id = "default")
+model Settings {
+  id                 String   @id @default("default")
+  schoolName         String   @default("SMA Negeri 1 Nusantara")
+  schoolLogo         String   @default("") // data URL or path
+  electionTitle      String   @default("Pemilihan Ketua & Wakil OSIS 2025")
+  electionDescription String  @default("Pilih pemimpin OSIS pilihanmu untuk periode 2025/2026.")
+  isActive           Boolean  @default(true)
+  startTime          DateTime?
+  endTime            DateTime?
+  totalVoters        Int      @default(0)
+  updatedAt          DateTime @updatedAt
+}
+
+// Election candidates
+model Candidate {
+  id        String   @id @default(cuid())
+  name      String
+  class     String   // kelas, e.g. "XI IPA 1"
+  photo     String   @default("") // data URL or path
+  vision    String   // visi
+  mission   String   // misi
+  order     Int      @default(0) // urutan nomor urut
+  color     String   @default("#3b82f6") // accent color for charts
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  votes     Vote[]
+}
+
+// One-time-use voting tokens issued by admin/panitia
+model Voter {
+  id        String    @id @default(cuid())
+  token     String    @unique // one-time use token
+  role      String    @default("student") // student | teacher
+  name      String?   // optional identity
+  hasVoted  Boolean   @default(false)
+  votedAt   DateTime?
+  usedToken Boolean   @default(false) // token consumed (login or vote)
+  batch     String?   // token batch label
+  createdAt DateTime  @default(now())
+  vote      Vote?
+}
+
+// A cast vote (one per voter)
+model Vote {
+  id          String   @id @default(cuid())
+  candidateId String
+  voterId     String   @unique // enforces one vote per voter
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  voter       Voter     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}

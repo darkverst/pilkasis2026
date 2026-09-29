@@ -1,0 +1,22 @@
+{
+  "name": "vote-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time election results socket.io mini-service for OSIS election app",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "postinstall": "prisma generate --schema=../../prisma/schema.prisma && rm -rf ./node_modules/.prisma/client && cp -r ../../node_modules/.prisma/client ./node_modules/.prisma/client"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.11.1",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "bun-types": "^1.3.4",
+    "prisma": "^6.11.1",
+    "typescript": "^5"
+  }
+}

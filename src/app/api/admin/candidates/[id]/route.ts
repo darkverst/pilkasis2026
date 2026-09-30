@@ -18,10 +18,18 @@ interface UpdateCandidateBody {
   mission?: unknown;
   color?: unknown;
   order?: unknown;
+  isPair?: unknown;
+  partnerName?: unknown;
+  partnerClass?: unknown;
+  partnerPhoto?: unknown;
 }
 
 function isString(v: unknown): v is string {
   return typeof v === "string";
+}
+
+function isBoolean(v: unknown): v is boolean {
+  return typeof v === "boolean";
 }
 
 function isNumber(v: unknown): v is number {
@@ -37,6 +45,10 @@ function serialize(c: {
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }): Candidate {
   return {
     id: c.id,
@@ -47,6 +59,10 @@ function serialize(c: {
     mission: c.mission,
     order: c.order,
     color: c.color,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   };
 }
 
@@ -67,6 +83,17 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     if (isString(body.mission)) data.mission = body.mission;
     if (isString(body.color)) data.color = body.color;
     if (isNumber(body.order)) data.order = Math.floor(body.order);
+    if (isBoolean(body.isPair)) data.isPair = body.isPair;
+    if (isString(body.partnerName)) data.partnerName = body.partnerName.trim();
+    if (isString(body.partnerClass)) data.partnerClass = body.partnerClass.trim();
+    if (isString(body.partnerPhoto)) data.partnerPhoto = body.partnerPhoto;
+
+    if (data.isPair === false) {
+      // Clear wakil fields when toggled off.
+      data.partnerName = "";
+      data.partnerClass = "";
+      data.partnerPhoto = "";
+    }
 
     const candidate = await db.candidate.update({
       where: { id },

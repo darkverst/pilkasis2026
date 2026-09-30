@@ -1,0 +1,918 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useRef, useState } from "react";
+     4→     4→import { useToast } from "@/hooks/use-toast";
+     5→     5→import { Button } from "@/components/ui/button";
+     6→     6→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     7→     7→import { Input } from "@/components/ui/input";
+     8→     8→import { Label } from "@/components/ui/label";
+     9→     9→import { Textarea } from "@/components/ui/textarea";
+    10→    10→import { Badge } from "@/components/ui/badge";
+    11→    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    12→    12→import {
+    13→    13→  Dialog,
+    14→    14→  DialogContent,
+    15→    15→  DialogHeader,
+    16→    16→  DialogTitle,
+    17→    17→  DialogFooter,
+    18→    18→  DialogDescription,
+    19→    19→} from "@/components/ui/dialog";
+    20→    20→import {
+    21→    21→  Select,
+    22→    22→  SelectContent,
+    23→    23→  SelectItem,
+    24→    24→  SelectTrigger,
+    25→    25→  SelectValue,
+    26→    26→} from "@/components/ui/select";
+    27→    27→import {
+    28→    28→  ShieldCheck,
+    29→    29→  Lock,
+    30→    30→  Loader2,
+    31→    31→  Users,
+    32→    32→  Vote,
+    33→    33→  Plus,
+    34→    34→  Pencil,
+    35→    35→  Trash2,
+    36→    36→  KeyRound,
+    37→    37→  Copy,
+    38→    38→  Check,
+    39→    39→  Download,
+    40→    40→  RefreshCw,
+    41→    41→  AlertTriangle,
+    42→    42→  GraduationCap,
+    43→    43→  Settings as SettingsIcon,
+    44→    44→  BarChart3,
+    45→    45→  LogOut,
+    46→    46→  UserCog,
+    47→    47→} from "lucide-react";
+    48→    48→import type { Candidate, ElectionResults, Settings, VoterInfo } from "@/lib/types";
+    49→    49→
+    50→    50→interface TokenStats {
+    51→    51→  total: number;
+    52→    52→  voted: number;
+    53→    53→  unvoted: number;
+    54→    54→  students: { total: number; voted: number };
+    55→    55→  teachers: { total: number; voted: number };
+    56→    56→}
+    57→    57→
+    58→    58→export function AdminView() {
+    59→    59→  const [authed, setAuthed] = useState<boolean | null>(null);
+    60→    60→
+    61→    61→  useEffect(() => {
+    62→    62→    fetch("/api/admin/check")
+    63→    63→      .then((r) => r.json())
+    64→    64→      .then((d: { authenticated: boolean }) => setAuthed(d.authenticated))
+    65→    65→      .catch(() => setAuthed(false));
+    66→    66→  }, []);
+    67→    67→
+    68→    68→  if (authed === null) {
+    69→    69→    return (
+    70→    70→      <div className="flex items-center justify-center py-20">
+    71→    71→        <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+    72→    72→      </div>
+    73→    73→    );
+    74→    74→  }
+    75→    75→  if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} />;
+    76→    76→  return <AdminDashboard onLogout={() => setAuthed(false)} />;
+    77→    77→}
+    78→    78→
+    79→    79→/* ============================== LOGIN ============================== */
+    80→    80→function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
+    81→    81→  const [password, setPassword] = useState("");
+    82→    82→  const [loading, setLoading] = useState(false);
+    83→    83→  const [error, setError] = useState<string | null>(null);
+    84→    84→  const { toast } = useToast();
+    85→    85→
+    86→    86→  const submit = async () => {
+    87→    87→    if (!password) return;
+    88→    88→    setLoading(true);
+    89→    89→    setError(null);
+    90→    90→    try {
+    91→    91→      const res = await fetch("/api/admin/login", {
+    92→    92→        method: "POST",
+    93→    93→        headers: { "Content-Type": "application/json" },
+    94→    94→        body: JSON.stringify({ password }),
+    95→    95→      });
+    96→    96→      const data = await res.json();
+    97→    97→      if (!res.ok) {
+    98→    98→        setError(data.error || "Login gagal.");
+    99→    99→        return;
+   100→   100→      }
+   101→   101→      toast({ title: "Selamat datang, Panitia!", description: "Anda berhasil masuk." });
+   102→   102→      onSuccess();
+   103→   103→    } catch {
+   104→   104→      setError("Koneksi bermasalah.");
+   105→   105→    } finally {
+   106→   106→      setLoading(false);
+   107→   107→    }
+   108→   108→  };
+   109→   109→
+   110→   110→  return (
+   111→   111→    <div className="mx-auto max-w-md">
+   112→   112→      <Card className="border-blue-100 bg-white/85 shadow-xl shadow-blue-100/40">
+   113→   113→        <CardContent className="p-6 sm:p-8">
+   114→   114→          <div className="text-center">
+   115→   115→            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+   116→   116→              <Lock className="h-7 w-7" />
+   117→   117→            </div>
+   118→   118→            <h2 className="text-2xl font-black text-blue-950">Login Panitia</h2>
+   119→   119→            <p className="mt-2 text-sm text-blue-700/80">
+   120→   120→              Masukkan password panitia untuk mengelola pemilihan OSIS.
+   121→   121→            </p>
+   122→   122→          </div>
+   123→   123→          <div className="mt-6 space-y-3">
+   124→   124→            <Label htmlFor="pw" className="text-blue-800">Password Panitia</Label>
+   125→   125→            <Input
+   126→   126→              id="pw"
+   127→   127→              type="password"
+   128→   128→              value={password}
+   129→   129→              onChange={(e) => { setPassword(e.target.value); setError(null); }}
+   130→   130→              onKeyDown={(e) => e.key === "Enter" && submit()}
+   131→   131→              placeholder="••••••••"
+   132→   132→              className="border-blue-200 focus:border-blue-500"
+   133→   133→              autoFocus
+   134→   134→            />
+   135→   135→            {error && <p className="text-sm text-rose-600">{error}</p>}
+   136→   136→            <Button
+   137→   137→              onClick={submit}
+   138→   138→              disabled={loading || !password}
+   139→   139→              className="w-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700"
+   140→   140→              size="lg"
+   141→   141→            >
+   142→   142→              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+   143→   143→              Masuk
+   144→   144→            </Button>
+   145→   145→            <p className="rounded-lg bg-blue-50 p-3 text-center text-xs text-blue-700/80">
+   146→   146→              Default: <span className="font-mono font-bold">panitia2025</span> (atur via env{" "}
+   147→   147→              <span className="font-mono">ADMIN_PASSWORD</span>)
+   148→   148→            </p>
+   149→   149→          </div>
+   150→   150→        </CardContent>
+   151→   151→      </Card>
+   152→   152→    </div>
+   153→   153→  );
+   154→   154→}
+   155→   155→
+   156→   156→/* ============================== DASHBOARD ============================== */
+   157→   157→function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+   158→   158→  const [tab, setTab] = useState("overview");
+   159→   159→  const { toast } = useToast();
+   160→   160→
+   161→   161→  const handleLogout = async () => {
+   162→   162→    await fetch("/api/admin/logout", { method: "POST" });
+   163→   163→    toast({ title: "Anda telah keluar." });
+   164→   164→    onLogout();
+   165→   165→  };
+   166→   166→
+   167→   167→  return (
+   168→   168→    <div className="space-y-5">
+   169→   169→      <div className="flex flex-wrap items-center justify-between gap-3">
+   170→   170→        <div>
+   171→   171→          <Badge className="mb-2 bg-blue-100 text-blue-700 hover:bg-blue-100">
+   172→   172→            <UserCog className="mr-1.5 h-3 w-3" /> Panel Panitia
+   173→   173→          </Badge>
+   174→   174→          <h1 className="text-2xl font-black text-blue-950 sm:text-3xl">Dashboard Pemilihan</h1>
+   175→   175→        </div>
+   176→   176→        <Button variant="outline" onClick={handleLogout} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+   177→   177→          <LogOut className="mr-2 h-4 w-4" /> Keluar
+   178→   178→        </Button>
+   179→   179→      </div>
+   180→   180→
+   181→   181→      <Tabs value={tab} onValueChange={setTab}>
+   182→   182→        <TabsList className="flex h-auto w-full flex-wrap gap-1 bg-blue-50/80 p-1">
+   183→   183→          <TabsTrigger value="overview" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"><BarChart3 className="mr-1.5 h-4 w-4" /> Ringkasan</TabsTrigger>
+   184→   184→          <TabsTrigger value="candidates" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"><Users className="mr-1.5 h-4 w-4" /> Calon</TabsTrigger>
+   185→   185→          <TabsTrigger value="tokens" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"><KeyRound className="mr-1.5 h-4 w-4" /> Token</TabsTrigger>
+   186→   186→          <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"><SettingsIcon className="mr-1.5 h-4 w-4" /> Pengaturan</TabsTrigger>
+   187→   187→        </TabsList>
+   188→   188→
+   189→   189→        <TabsContent value="overview" className="mt-4"><OverviewTab /></TabsContent>
+   190→   190→        <TabsContent value="candidates" className="mt-4"><CandidatesTab /></TabsContent>
+   191→   191→        <TabsContent value="tokens" className="mt-4"><TokensTab /></TabsContent>
+   192→   192→        <TabsContent value="settings" className="mt-4"><SettingsTab /></TabsContent>
+   193→   193→      </Tabs>
+   194→   194→    </div>
+   195→   195→  );
+   196→   196→}
+   197→   197→
+   198→   198→/* ----------------------------- OVERVIEW ----------------------------- */
+   199→   199→function OverviewTab() {
+   200→   200→  const [stats, setStats] = useState<TokenStats | null>(null);
+   201→   201→  const [results, setResults] = useState<ElectionResults | null>(null);
+   202→   202→
+   203→   203→  const refresh = () => {
+   204→   204→    fetch("/api/admin/tokens/stats").then((r) => r.json()).then(setStats).catch(() => {});
+   205→   205→    fetch("/api/results").then((r) => r.json()).then(setResults).catch(() => {});
+   206→   206→  };
+   207→   207→  useEffect(() => {
+   208→   208→    refresh();
+   209→   209→    const i = setInterval(refresh, 5000);
+   210→   210→    return () => clearInterval(i);
+   211→   211→  }, []);
+   212→   212→
+   213→   213→  return (
+   214→   214→    <div className="space-y-5">
+   215→   215→      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   216→   216→        <MiniStat icon={Vote} label="Total Suara" value={results?.totalVotes ?? 0} color="bg-blue-600" />
+   217→   217→        <MiniStat icon={Users} label="Total Token" value={stats?.total ?? 0} color="bg-sky-500" />
+   218→   218→        <MiniStat icon={Check} label="Sudah Memilih" value={stats?.voted ?? 0} color="bg-emerald-500" />
+   219→   219→        <MiniStat icon={Clock2} label="Belum Memilih" value={stats?.unvoted ?? 0} color="bg-amber-500" />
+   220→   220→      </div>
+   221→   221→
+   222→   222→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+   223→   223→        <Card className="border-blue-100 bg-white/85">
+   224→   224→          <CardHeader><CardTitle className="text-blue-950">Partisipasi Siswa</CardTitle></CardHeader>
+   225→   225→          <CardContent>
+   226→   226→            {stats ? (
+   227→   227→              <ProgressBar value={stats.students.total ? (stats.students.voted / stats.students.total) * 100 : 0} label={`${stats.students.voted} / ${stats.students.total} siswa`} />
+   228→   228→            ) : <Loader2 className="h-5 w-5 animate-spin text-blue-300" />}
+   229→   229→          </CardContent>
+   230→   230→        </Card>
+   231→   231→        <Card className="border-blue-100 bg-white/85">
+   232→   232→          <CardHeader><CardTitle className="text-blue-950">Partisipasi Guru</CardTitle></CardHeader>
+   233→   233→          <CardContent>
+   234→   234→            {stats ? (
+   235→   235→              <ProgressBar value={stats.teachers.total ? (stats.teachers.voted / stats.teachers.total) * 100 : 0} label={`${stats.teachers.voted} / ${stats.teachers.total} guru`} />
+   236→   236→            ) : <Loader2 className="h-5 w-5 animate-spin text-blue-300" />}
+   237→   237→          </CardContent>
+   238→   238→        </Card>
+   239→   239→      </div>
+   240→   240→
+   241→   241→      <Card className="border-blue-100 bg-white/85">
+   242→   242→        <CardHeader><CardTitle className="flex items-center gap-2 text-blue-950"><BarChart3 className="h-5 w-5" /> Perolehan Sementara</CardTitle></CardHeader>
+   243→   243→        <CardContent>
+   244→   244→          {!results || results.candidates.length === 0 ? (
+   245→   245→            <p className="py-6 text-center text-sm text-blue-700/70">Belum ada data.</p>
+   246→   246→          ) : (
+   247→   247→            <div className="space-y-3">
+   248→   248→              {[...results.candidates].sort((a,b)=>b.voteCount-a.voteCount).map((c, i) => (
+   249→   249→                <div key={c.id} className="flex items-center gap-3">
+   250→   250→                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">{i+1}</span>
+   251→   251→                  <span className="w-32 shrink-0 truncate text-sm font-medium text-blue-950">{c.name}</span>
+   252→   252→                  <div className="flex-1"><ProgressBar value={c.percentage} label={`${c.voteCount} suara`} color={c.color} /></div>
+   253→   253→                </div>
+   254→   254→              ))}
+   255→   255→            </div>
+   256→   256→          )}
+   257→   257→        </CardContent>
+   258→   258→      </Card>
+   259→   259→
+   260→   260→      <ResetCard onDone={() => refresh()} />
+   261→   261→    </div>
+   262→   262→  );
+   263→   263→}
+   264→   264→
+   265→   265→function MiniStat({ icon: Icon, label, value, color }: { icon: typeof Vote; label: string; value: number; color: string }) {
+   266→   266→  return (
+   267→   267→    <Card className="border-blue-100 bg-white/85">
+   268→   268→      <CardContent className="p-4">
+   269→   269→        <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg ${color} text-white shadow`}>
+   270→   270→          <Icon className="h-4 w-4" />
+   271→   271→        </div>
+   272→   272→        <p className="text-[11px] font-medium uppercase tracking-wide text-blue-600">{label}</p>
+   273→   273→        <p className="text-2xl font-black text-blue-950">{value}</p>
+   274→   274→      </CardContent>
+   275→   275→    </Card>
+   276→   276→  );
+   277→   277→}
+   278→   278→
+   279→   279→function ProgressBar({ value, label, color }: { value: number; label: string; color?: string }) {
+   280→   280→  return (
+   281→   281→    <div className="space-y-1.5">
+   282→   282→      <div className="h-3 w-full overflow-hidden rounded-full bg-blue-50">
+   283→   283→        <div
+   284→   284→          className="h-full rounded-full transition-all duration-700"
+   285→   285→          style={{ width: `${Math.min(100, value)}%`, backgroundColor: color || "var(--primary)" }}
+   286→   286→        />
+   287→   287→      </div>
+   288→   288→      <p className="text-xs text-blue-600">{label} &middot; {Math.round(value)}%</p>
+   289→   289→    </div>
+   290→   290→  );
+   291→   291→}
+   292→   292→
+   293→   293→function Clock2(props: React.ComponentProps<typeof Vote>) {
+   294→   294→  return <RefreshCw {...props} />;
+   295→   295→}
+   296→   296→
+   297→   297→/* ----------------------------- CANDIDATES ----------------------------- */
+   298→   298→function CandidatesTab() {
+   299→   299→  const [items, setItems] = useState<Candidate[]>([]);
+   300→   300→  const [loading, setLoading] = useState(true);
+   301→   301→  const [editing, setEditing] = useState<Candidate | null>(null);
+   302→   302→  const [creating, setCreating] = useState(false);
+   303→   303→  const { toast } = useToast();
+   304→   304→
+   305→   305→  const load = (showLoading = false) => {
+   306→   306→    if (showLoading) setLoading(true);
+   307→   307→    fetch("/api/candidates").then((r) => r.json()).then((d: Candidate[]) => setItems(d || [])).finally(() => setLoading(false));
+   308→   308→  };
+   309→   309→  useEffect(() => {
+   310→   310→    let alive = true;
+   311→   311→    fetch("/api/candidates")
+   312→   312→      .then((r) => r.json())
+   313→   313→      .then((d: Candidate[]) => alive && setItems(d || []))
+   314→   314→      .finally(() => alive && setLoading(false));
+   315→   315→    return () => { alive = false; };
+   316→   316→  }, []);
+   317→   317→
+   318→   318→  const handleDelete = async (c: Candidate) => {
+   319→   319→    if (!confirm(`Hapus calon "${c.name}"? Semua suara terkait juga akan dihapus.`)) return;
+   320→   320→    const res = await fetch(`/api/admin/candidates/${c.id}`, { method: "DELETE" });
+   321→   321→    if (res.ok) {
+   322→   322→      toast({ title: "Calon dihapus." });
+   323→   323→      load();
+   324→   324→    } else {
+   325→   325→      toast({ title: "Gagal menghapus.", variant: "destructive" });
+   326→   326→    }
+   327→   327→  };
+   328→   328→
+   329→   329→  return (
+   330→   330→    <div className="space-y-4">
+   331→   331→      <div className="flex items-center justify-between">
+   332→   332→        <p className="text-sm text-blue-700/80">{items.length} calon terdaftar</p>
+   333→   333→        <Button onClick={() => setCreating(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+   334→   334→          <Plus className="mr-1.5 h-4 w-4" /> Tambah Calon
+   335→   335→        </Button>
+   336→   336→      </div>
+   337→   337→
+   338→   338→      {loading ? (
+   339→   339→        <div className="py-10 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-400" /></div>
+   340→   340→      ) : items.length === 0 ? (
+   341→   341→        <Card className="border-blue-100 bg-white/80"><CardContent className="p-8 text-center text-blue-700/70">Belum ada calon. Tambahkan calon pertama Anda.</CardContent></Card>
+   342→   342→      ) : (
+   343→   343→        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   344→   344→          {items.map((c, i) => (
+   345→   345→            <Card key={c.id} className="overflow-hidden border-blue-100 bg-white/85">
+   346→   346→              <div className="flex">
+   347→   347→                <div className="h-24 w-24 shrink-0 overflow-hidden bg-blue-50">
+   348→   348→                  {c.photo ? (
+   349→   349→                     
+   350→   350→                    <img src={c.photo} alt={c.name} className="h-full w-full object-cover" />
+   351→   351→                  ) : (
+   352→   352→                    <div className="flex h-full w-full items-center justify-center text-3xl font-black text-blue-200">{c.name.charAt(0)}</div>
+   353→   353→                  )}
+   354→   354→                </div>
+   355→   355→                <div className="flex-1 p-3">
+   356→   356→                  <div className="flex items-start justify-between gap-2">
+   357→   357→                    <div className="min-w-0">
+   358→   358→                      <p className="text-xs text-blue-500">No. Urut {c.order || i + 1}</p>
+   359→   359→                      <p className="truncate font-bold text-blue-950">{c.name}</p>
+   360→   360→                      <p className="text-xs text-blue-600">{c.class}</p>
+   361→   361→                    </div>
+   362→   362→                    <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+   363→   363→                  </div>
+   364→   364→                  <p className="mt-1 line-clamp-2 text-xs text-blue-700/70">{c.vision}</p>
+   365→   365→                  <div className="mt-2 flex gap-2">
+   366→   366→                    <Button size="sm" variant="outline" onClick={() => setEditing(c)} className="border-blue-200 text-blue-700 hover:bg-blue-50 h-7 px-2 text-xs">
+   367→   367→                      <Pencil className="mr-1 h-3 w-3" /> Edit
+   368→   368→                    </Button>
+   369→   369→                    <Button size="sm" variant="outline" onClick={() => handleDelete(c)} className="border-rose-200 text-rose-600 hover:bg-rose-50 h-7 px-2 text-xs">
+   370→   370→                      <Trash2 className="mr-1 h-3 w-3" /> Hapus
+   371→   371→                    </Button>
+   372→   372→                  </div>
+   373→   373→                </div>
+   374→   374→              </div>
+   375→   375→            </Card>
+   376→   376→          ))}
+   377→   377→        </div>
+   378→   378→      )}
+   379→   379→
+   380→   380→      <CandidateFormDialog
+   381→   381→        key={creating ? "create" : "create-closed"}
+   382→   382→        open={creating}
+   383→   383→        candidate={null}
+   384→   384→        onClose={() => setCreating(false)}
+   385→   385→        onSaved={() => { setCreating(false); load(); }}
+   386→   386→      />
+   387→   387→      <CandidateFormDialog
+   388→   388→        key={editing?.id || "edit-closed"}
+   389→   389→        open={!!editing}
+   390→   390→        candidate={editing}
+   391→   391→        onClose={() => setEditing(null)}
+   392→   392→        onSaved={() => { setEditing(null); load(); }}
+   393→   393→      />
+   394→   394→    </div>
+   395→   395→  );
+   396→   396→}
+   397→   397→
+   398→   398→function CandidateFormDialog({
+   399→   399→  open,
+   400→   400→  candidate,
+   401→   401→  onClose,
+   402→   402→  onSaved,
+   403→   403→}: {
+   404→   404→  open: boolean;
+   405→   405→  candidate: Candidate | null;
+   406→   406→  onClose: () => void;
+   407→   407→  onSaved: () => void;
+   408→   408→}) {
+   409→   409→  const { toast } = useToast();
+   410→   410→  // Initialize state directly from the candidate prop. The parent passes a `key`
+   411→   411→  // so the component remounts fresh each time it opens for a different candidate,
+   412→   412→  // avoiding prop-to-state sync inside an effect.
+   413→   413→  const [name, setName] = useState(candidate?.name || "");
+   414→   414→  const [kelas, setKelas] = useState(candidate?.class || "");
+   415→   415→  const [vision, setVision] = useState(candidate?.vision || "");
+   416→   416→  const [mission, setMission] = useState(candidate?.mission || "");
+   417→   417→  const [order, setOrder] = useState(String(candidate?.order ?? 1));
+   418→   418→  const [color, setColor] = useState(candidate?.color || "#3b82f6");
+   419→   419→  const [photo, setPhoto] = useState(candidate?.photo || "");
+   420→   420→  const [saving, setSaving] = useState(false);
+   421→   421→  const fileRef = useRef<HTMLInputElement>(null);
+   422→   422→
+   423→   423→  const handlePhoto = (file: File) => {
+   424→   424→    if (file.size > 2_500_000) {
+   425→   425→      toast({ title: "Ukuran foto terlalu besar", description: "Maksimal 2.5MB.", variant: "destructive" });
+   426→   426→      return;
+   427→   427→    }
+   428→   428→    const reader = new FileReader();
+   429→   429→    reader.onload = () => setPhoto(String(reader.result));
+   430→   430→    reader.readAsDataURL(file);
+   431→   431→  };
+   432→   432→
+   433→   433→  const save = async () => {
+   434→   434→    if (!name.trim() || !kelas.trim() || !vision.trim() || !mission.trim()) {
+   435→   435→      toast({ title: "Lengkapi semua field wajib.", variant: "destructive" });
+   436→   436→      return;
+   437→   437→    }
+   438→   438→    setSaving(true);
+   439→   439→    const body = { name, class: kelas, vision, mission, order: Number(order) || 1, color, photo };
+   440→   440→    const url = candidate ? `/api/admin/candidates/${candidate.id}` : "/api/admin/candidates";
+   441→   441→    const method = candidate ? "PUT" : "POST";
+   442→   442→    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+   443→   443→    setSaving(false);
+   444→   444→    if (res.ok) {
+   445→   445→      toast({ title: candidate ? "Calon diperbarui." : "Calon ditambahkan." });
+   446→   446→      onSaved();
+   447→   447→    } else {
+   448→   448→      toast({ title: "Gagal menyimpan.", variant: "destructive" });
+   449→   449→    }
+   450→   450→  };
+   451→   451→
+   452→   452→  const colors = ["#3b82f6", "#0ea5e9", "#06b6d4", "#6366f1", "#14b8a6", "#8b5cf6", "#ec4899", "#f59e0b"];
+   453→   453→
+   454→   454→  return (
+   455→   455→    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+   456→   456→      <DialogContent className="max-h-[90vh] overflow-y-auto scrollbar-blue sm:max-w-lg">
+   457→   457→        <DialogHeader>
+   458→   458→          <DialogTitle className="text-blue-950">{candidate ? "Edit Calon" : "Tambah Calon"}</DialogTitle>
+   459→   459→          <DialogDescription>Lengkapi identitas dan visi-misi calon OSIS.</DialogDescription>
+   460→   460→        </DialogHeader>
+   461→   461→        <div className="space-y-3">
+   462→   462→          {/* Photo */}
+   463→   463→          <div className="flex items-center gap-3">
+   464→   464→            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-blue-50 ring-1 ring-blue-100">
+   465→   465→              {photo ? (
+   466→   466→                 
+   467→   467→                <img src={photo} alt="preview" className="h-full w-full object-cover" />
+   468→   468→              ) : (
+   469→   469→                <div className="flex h-full w-full items-center justify-center text-blue-300"><GraduationCap className="h-7 w-7" /></div>
+   470→   470→              )}
+   471→   471→            </div>
+   472→   472→            <div className="flex-1 space-y-1">
+   473→   473→              <Label className="text-blue-800">Foto Calon</Label>
+   474→   474→              <Input ref={fileRef} type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])} className="text-xs" />
+   475→   475→              <p className="text-[11px] text-blue-500">JPG/PNG, maks 2.5MB. Disimpan sebagai data URL.</p>
+   476→   476→            </div>
+   477→   477→          </div>
+   478→   478→          <div className="grid grid-cols-2 gap-3">
+   479→   479→            <div className="space-y-1">
+   480→   480→              <Label className="text-blue-800">Nama Lengkap *</Label>
+   481→   481→              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama calon" className="border-blue-200" />
+   482→   482→            </div>
+   483→   483→            <div className="space-y-1">
+   484→   484→              <Label className="text-blue-800">Kelas *</Label>
+   485→   485→              <Input value={kelas} onChange={(e) => setKelas(e.target.value)} placeholder="XI IPA 1" className="border-blue-200" />
+   486→   486→            </div>
+   487→   487→          </div>
+   488→   488→          <div className="grid grid-cols-2 gap-3">
+   489→   489→            <div className="space-y-1">
+   490→   490→              <Label className="text-blue-800">Nomor Urut</Label>
+   491→   491→              <Input type="number" min={1} value={order} onChange={(e) => setOrder(e.target.value)} className="border-blue-200" />
+   492→   492→            </div>
+   493→   493→            <div className="space-y-1">
+   494→   494→              <Label className="text-blue-800">Warna</Label>
+   495→   495→              <div className="flex flex-wrap gap-1.5">
+   496→   496→                {colors.map((c) => (
+   497→   497→                  <button key={c} type="button" onClick={() => setColor(c)} className={`h-7 w-7 rounded-full ring-2 transition ${color === c ? "ring-blue-400 scale-110" : "ring-transparent"}`} style={{ backgroundColor: c }} aria-label={`Warna ${c}`} />
+   498→   498→                ))}
+   499→   499→              </div>
+   500→   500→            </div>
+   501→   501→          </div>
+   502→   502→          <div className="space-y-1">
+   503→   503→            <Label className="text-blue-800">Visi *</Label>
+   504→   504→            <Textarea value={vision} onChange={(e) => setVision(e.target.value)} placeholder="Visi calon..." rows={2} className="border-blue-200" />
+   505→   505→          </div>
+   506→   506→          <div className="space-y-1">
+   507→   507→            <Label className="text-blue-800">Misi *</Label>
+   508→   508→            <Textarea value={mission} onChange={(e) => setMission(e.target.value)} placeholder="Satu misi per baris..." rows={4} className="border-blue-200" />
+   509→   509→            <p className="text-[11px] text-blue-500">Tulis satu misi per baris untuk tampilan daftar bernomor.</p>
+   510→   510→          </div>
+   511→   511→        </div>
+   512→   512→        <DialogFooter>
+   513→   513→          <Button variant="outline" onClick={onClose} className="border-blue-200">Batal</Button>
+   514→   514→          <Button onClick={save} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
+   515→   515→            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+   516→   516→            {candidate ? "Simpan Perubahan" : "Tambah Calon"}
+   517→   517→          </Button>
+   518→   518→        </DialogFooter>
+   519→   519→      </DialogContent>
+   520→   520→    </Dialog>
+   521→   521→  );
+   522→   522→}
+   523→   523→
+   524→   524→/* ----------------------------- TOKENS ----------------------------- */
+   525→   525→function TokensTab() {
+   526→   526→  const [tokens, setTokens] = useState<VoterInfo[]>([]);
+   527→   527→  const [stats, setStats] = useState<TokenStats | null>(null);
+   528→   528→  const [loading, setLoading] = useState(true);
+   529→   529→  const [genCount, setGenCount] = useState("20");
+   530→   530→  const [genRole, setGenRole] = useState<"student" | "teacher">("student");
+   531→   531→  const [genBatch, setGenBatch] = useState("");
+   532→   532→  const [generating, setGenerating] = useState(false);
+   533→   533→  const [generated, setGenerated] = useState<string[] | null>(null);
+   534→   534→  const [filter, setFilter] = useState<"all" | "unvoted" | "voted">("all");
+   535→   535→  const [copiedAll, setCopiedAll] = useState(false);
+   536→   536→  const { toast } = useToast();
+   537→   537→
+   538→   538→  const load = (showLoading = false) => {
+   539→   539→    if (showLoading) setLoading(true);
+   540→   540→    const q = filter === "all" ? "" : `?${filter === "unvoted" ? "unvoted=true" : "unvoted=false"}`;
+   541→   541→    fetch(`/api/admin/tokens${q}`).then((r) => r.json()).then((d: VoterInfo[]) => setTokens(d || [])).finally(() => setLoading(false));
+   542→   542→    fetch("/api/admin/tokens/stats").then((r) => r.json()).then(setStats).catch(() => {});
+   543→   543→  };
+   544→   544→  useEffect(() => {
+   545→   545→    let alive = true;
+   546→   546→    const q = filter === "all" ? "" : `?${filter === "unvoted" ? "unvoted=true" : "unvoted=false"}`;
+   547→   547→    fetch(`/api/admin/tokens${q}`)
+   548→   548→      .then((r) => r.json())
+   549→   549→      .then((d: VoterInfo[]) => alive && setTokens(d || []))
+   550→   550→      .finally(() => alive && setLoading(false));
+   551→   551→    fetch("/api/admin/tokens/stats").then((r) => r.json()).then((s) => alive && setStats(s)).catch(() => {});
+   552→   552→    return () => { alive = false; };
+   553→   553→  }, [filter]);
+   554→   554→
+   555→   555→  const generate = async () => {
+   556→   556→    const count = Math.max(1, Math.min(500, Number(genCount) || 0));
+   557→   557→    if (!count) return;
+   558→   558→    setGenerating(true);
+   559→   559→    setGenerated(null);
+   560→   560→    try {
+   561→   561→      const res = await fetch("/api/admin/tokens/generate", {
+   562→   562→        method: "POST",
+   563→   563→        headers: { "Content-Type": "application/json" },
+   564→   564→        body: JSON.stringify({ count, role: genRole, batch: genBatch.trim() || undefined }),
+   565→   565→      });
+   566→   566→      const data = await res.json();
+   567→   567→      if (res.ok) {
+   568→   568→        setGenerated(data.tokens);
+   569→   569→        toast({ title: `${data.tokens.length} token dibuat!` });
+   570→   570→        load();
+   571→   571→      } else {
+   572→   572→        toast({ title: "Gagal membuat token.", variant: "destructive" });
+   573→   573→      }
+   574→   574→    } finally {
+   575→   575→      setGenerating(false);
+   576→   576→    }
+   577→   577→  };
+   578→   578→
+   579→   579→  const copyAll = () => {
+   580→   580→    if (!generated) return;
+   581→   581→    navigator.clipboard.writeText(generated.join("\n"));
+   582→   582→    setCopiedAll(true);
+   583→   583→    setTimeout(() => setCopiedAll(false), 2000);
+   584→   584→  };
+   585→   585→
+   586→   586→  const downloadCSV = () => {
+   587→   587→    if (!generated) return;
+   588→   588→    const csv = "token,role,batch\n" + generated.map((t) => `${t},${genRole},${genBatch || ""}`).join("\n");
+   589→   589→    const blob = new Blob([csv], { type: "text/csv" });
+   590→   590→    const url = URL.createObjectURL(blob);
+   591→   591→    const a = document.createElement("a");
+   592→   592→    a.href = url;
+   593→   593→    a.download = `tokens-${genRole}-${Date.now()}.csv`;
+   594→   594→    a.click();
+   595→   595→    URL.revokeObjectURL(url);
+   596→   596→  };
+   597→   597→
+   598→   598→  const deleteToken = async (t: VoterInfo) => {
+   599→   599→    if (!confirm(`Hapus token ${t.token}?`)) return;
+   600→   600→    const res = await fetch(`/api/admin/tokens/${t.id}`, { method: "DELETE" });
+   601→   601→    if (res.ok) { toast({ title: "Token dihapus." }); load(); }
+   602→   602→    else { const d = await res.json(); toast({ title: d.error || "Gagal menghapus.", variant: "destructive" }); }
+   603→   603→  };
+   604→   604→
+   605→   605→  return (
+   606→   606→    <div className="space-y-5">
+   607→   607→      {/* Generate */}
+   608→   608→      <Card className="border-blue-100 bg-white/85">
+   609→   609→        <CardHeader><CardTitle className="flex items-center gap-2 text-blue-950"><KeyRound className="h-5 w-5" /> Buat Token Baru</CardTitle></CardHeader>
+   610→   610→        <CardContent className="space-y-3">
+   611→   611→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+   612→   612→            <div className="space-y-1">
+   613→   613→              <Label className="text-blue-800">Jumlah</Label>
+   614→   614→              <Input type="number" min={1} max={500} value={genCount} onChange={(e) => setGenCount(e.target.value)} className="border-blue-200" />
+   615→   615→            </div>
+   616→   616→            <div className="space-y-1">
+   617→   617→              <Label className="text-blue-800">Peran</Label>
+   618→   618→              <Select value={genRole} onValueChange={(v) => setGenRole(v as "student" | "teacher")}>
+   619→   619→                <SelectTrigger className="border-blue-200"><SelectValue /></SelectTrigger>
+   620→   620→                <SelectContent>
+   621→   621→                  <SelectItem value="student">Siswa</SelectItem>
+   622→   622→                  <SelectItem value="teacher">Guru</SelectItem>
+   623→   623→                </SelectContent>
+   624→   624→              </Select>
+   625→   625→            </div>
+   626→   626→            <div className="space-y-1 sm:col-span-2">
+   627→   627→              <Label className="text-blue-800">Batch (opsional)</Label>
+   628→   628→              <Input value={genBatch} onChange={(e) => setGenBatch(e.target.value)} placeholder="cth: Kelas XI IPA" className="border-blue-200" />
+   629→   629→            </div>
+   630→   630→          </div>
+   631→   631→          <Button onClick={generate} disabled={generating} className="bg-blue-600 text-white hover:bg-blue-700">
+   632→   632→            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+   633→   633→            Buat Token
+   634→   634→          </Button>
+   635→   635→
+   636→   636→          {generated && (
+   637→   637→            <div className="rounded-xl bg-blue-50 p-4">
+   638→   638→              <div className="mb-2 flex items-center justify-between">
+   639→   639→                <p className="text-sm font-semibold text-blue-800">{generated.length} token berhasil dibuat:</p>
+   640→   640→                <div className="flex gap-2">
+   641→   641→                  <Button size="sm" variant="outline" onClick={copyAll} className="border-blue-300 text-blue-700 h-7 text-xs">
+   642→   642→                    {copiedAll ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
+   643→   643→                    {copiedAll ? "Disalin!" : "Salin Semua"}
+   644→   644→                  </Button>
+   645→   645→                  <Button size="sm" variant="outline" onClick={downloadCSV} className="border-blue-300 text-blue-700 h-7 text-xs">
+   646→   646→                    <Download className="mr-1 h-3 w-3" /> CSV
+   647→   647→                  </Button>
+   648→   648→                </div>
+   649→   649→              </div>
+   650→   650→              <div className="max-h-40 overflow-y-auto scrollbar-blue rounded bg-white p-2">
+   651→   651→                <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+   652→   652→                  {generated.map((t) => (
+   653→   653→                    <code key={t} className="rounded bg-blue-50 px-2 py-1 font-mono text-xs text-blue-700">{t}</code>
+   654→   654→                  ))}
+   655→   655→                </div>
+   656→   656→              </div>
+   657→   657→            </div>
+   658→   658→          )}
+   659→   659→        </CardContent>
+   660→   660→      </Card>
+   661→   661→
+   662→   662→      {/* Stats */}
+   663→   663→      {stats && (
+   664→   664→        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   665→   665→          <MiniStat icon={Users} label="Total" value={stats.total} color="bg-blue-600" />
+   666→   666→          <MiniStat icon={Check} label="Sudah Memilih" value={stats.voted} color="bg-emerald-500" />
+   667→   667→          <MiniStat icon={Clock2} label="Belum Memilih" value={stats.unvoted} color="bg-amber-500" />
+   668→   668→          <MiniStat icon={GraduationCap} label="Siswa / Guru" value={`${stats.students.total} / ${stats.teachers.total}`} color="bg-sky-500" />
+   669→   669→        </div>
+   670→   670→      )}
+   671→   671→
+   672→   672→      {/* Filter + List */}
+   673→   673→      <Card className="border-blue-100 bg-white/85">
+   674→   674→        <CardHeader>
+   675→   675→          <div className="flex flex-wrap items-center justify-between gap-2">
+   676→   676→            <CardTitle className="text-blue-950">Daftar Token</CardTitle>
+   677→   677→            <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+   678→   678→              <SelectTrigger className="h-8 w-40 border-blue-200 text-xs"><SelectValue /></SelectTrigger>
+   679→   679→              <SelectContent>
+   680→   680→                <SelectItem value="all">Semua</SelectItem>
+   681→   681→                <SelectItem value="unvoted">Belum Memilih</SelectItem>
+   682→   682→                <SelectItem value="voted">Sudah Memilih</SelectItem>
+   683→   683→              </SelectContent>
+   684→   684→            </Select>
+   685→   685→          </div>
+   686→   686→        </CardHeader>
+   687→   687→        <CardContent>
+   688→   688→          {loading ? (
+   689→   689→            <div className="py-8 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-400" /></div>
+   690→   690→          ) : tokens.length === 0 ? (
+   691→   691→            <p className="py-8 text-center text-sm text-blue-700/70">Belum ada token. Buat token di atas.</p>
+   692→   692→          ) : (
+   693→   693→            <div className="max-h-[480px] overflow-y-auto scrollbar-blue">
+   694→   694→              <table className="w-full text-sm">
+   695→   695→                <thead className="sticky top-0 bg-blue-50/95 backdrop-blur">
+   696→   696→                  <tr className="text-left text-xs text-blue-600">
+   697→   697→                    <th className="p-2 font-semibold">Token</th>
+   698→   698→                    <th className="p-2 font-semibold">Peran</th>
+   699→   699→                    <th className="p-2 font-semibold">Status</th>
+   700→   700→                    <th className="p-2 font-semibold">Waktu Pilih</th>
+   701→   701→                    <th className="p-2"></th>
+   702→   702→                  </tr>
+   703→   703→                </thead>
+   704→   704→                <tbody>
+   705→   705→                  {tokens.map((t) => (
+   706→   706→                    <tr key={t.id} className="border-t border-blue-50">
+   707→   707→                      <td className="p-2 font-mono text-xs text-blue-800">{t.token}</td>
+   708→   708→                      <td className="p-2"><Badge variant="outline" className="border-blue-200 text-blue-700">{t.role === "teacher" ? "Guru" : "Siswa"}</Badge></td>
+   709→   709→                      <td className="p-2">
+   710→   710→                        {t.hasVoted ? (
+   711→   711→                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100"><Check className="mr-1 h-3 w-3" /> Sudah</Badge>
+   712→   712→                        ) : (
+   713→   713→                          <Badge variant="outline" className="border-amber-200 text-amber-700">Belum</Badge>
+   714→   714→                        )}
+   715→   715→                      </td>
+   716→   716→                      <td className="p-2 text-xs text-blue-500">{t.votedAt ? new Date(t.votedAt).toLocaleString("id-ID") : "-"}</td>
+   717→   717→                      <td className="p-2">
+   718→   718→                        {!t.hasVoted && (
+   719→   719→                          <Button size="sm" variant="ghost" onClick={() => deleteToken(t)} className="h-7 text-rose-600 hover:bg-rose-50">
+   720→   720→                            <Trash2 className="h-3 w-3" />
+   721→   721→                          </Button>
+   722→   722→                        )}
+   723→   723→                      </td>
+   724→   724→                    </tr>
+   725→   725→                  ))}
+   726→   726→                </tbody>
+   727→   727→              </table>
+   728→   728→            </div>
+   729→   729→          )}
+   730→   730→        </CardContent>
+   731→   731→      </Card>
+   732→   732→    </div>
+   733→   733→  );
+   734→   734→}
+   735→   735→
+   736→   736→/* ----------------------------- SETTINGS ----------------------------- */
+   737→   737→function SettingsTab() {
+   738→   738→  const [settings, setSettings] = useState<Settings | null>(null);
+   739→   739→  const [saving, setSaving] = useState(false);
+   740→   740→  const [schoolName, setSchoolName] = useState("");
+   741→   741→  const [electionTitle, setElectionTitle] = useState("");
+   742→   742→  const [electionDescription, setElectionDescription] = useState("");
+   743→   743→  const [totalVoters, setTotalVoters] = useState("0");
+   744→   744→  const [isActive, setIsActive] = useState(true);
+   745→   745→  const [schoolLogo, setSchoolLogo] = useState("");
+   746→   746→  const { toast } = useToast();
+   747→   747→  const logoRef = useRef<HTMLInputElement>(null);
+   748→   748→
+   749→   749→  useEffect(() => {
+   750→   750→    fetch("/api/settings").then((r) => r.json()).then((s: Settings) => {
+   751→   751→      setSettings(s);
+   752→   752→      setSchoolName(s.schoolName);
+   753→   753→      setElectionTitle(s.electionTitle);
+   754→   754→      setElectionDescription(s.electionDescription);
+   755→   755→      setTotalVoters(String(s.totalVoters));
+   756→   756→      setIsActive(s.isActive);
+   757→   757→      setSchoolLogo(s.schoolLogo);
+   758→   758→    }).catch(() => {});
+   759→   759→  }, []);
+   760→   760→
+   761→   761→  const handleLogo = (file: File) => {
+   762→   762→    if (file.size > 1_500_000) {
+   763→   763→      toast({ title: "Logo terlalu besar", description: "Maksimal 1.5MB.", variant: "destructive" });
+   764→   764→      return;
+   765→   765→    }
+   766→   766→    const reader = new FileReader();
+   767→   767→    reader.onload = () => setSchoolLogo(String(reader.result));
+   768→   768→    reader.readAsDataURL(file);
+   769→   769→  };
+   770→   770→
+   771→   771→  const save = async () => {
+   772→   772→    setSaving(true);
+   773→   773→    const res = await fetch("/api/admin/settings", {
+   774→   774→      method: "PUT",
+   775→   775→      headers: { "Content-Type": "application/json" },
+   776→   776→      body: JSON.stringify({
+   777→   777→        schoolName, electionTitle, electionDescription,
+   778→   778→        totalVoters: Number(totalVoters) || 0, isActive,
+   779→   779→        schoolLogo,
+   780→   780→      }),
+   781→   781→    });
+   782→   782→    setSaving(false);
+   783→   783→    if (res.ok) toast({ title: "Pengaturan disimpan." });
+   784→   784→    else toast({ title: "Gagal menyimpan.", variant: "destructive" });
+   785→   785→  };
+   786→   786→
+   787→   787→  if (!settings) return <div className="py-10 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-400" /></div>;
+   788→   788→
+   789→   789→  return (
+   790→   790→    <Card className="border-blue-100 bg-white/85">
+   791→   791→      <CardHeader><CardTitle className="flex items-center gap-2 text-blue-950"><SettingsIcon className="h-5 w-5" /> Pengaturan Pemilihan</CardTitle></CardHeader>
+   792→   792→      <CardContent className="space-y-4">
+   793→   793→        {/* Logo */}
+   794→   794→        <div className="flex items-center gap-4">
+   795→   795→          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-blue-100">
+   796→   796→            {schoolLogo ? (
+   797→   797→               
+   798→   798→              <img src={schoolLogo} alt="logo" className="h-full w-full object-contain" />
+   799→   799→            ) : (
+   800→   800→              <div className="flex h-full w-full items-center justify-center text-2xl font-black text-blue-200">{schoolName.charAt(0) || "S"}</div>
+   801→   801→            )}
+   802→   802→          </div>
+   803→   803→          <div className="flex-1 space-y-1">
+   804→   804→            <Label className="text-blue-800">Logo Sekolah</Label>
+   805→   805→            <Input ref={logoRef} type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleLogo(e.target.files[0])} className="text-xs" />
+   806→   806→            <p className="text-[11px] text-blue-500">SVG/PNG/JPG, maks 1.5MB.</p>
+   807→   807→          </div>
+   808→   808→        </div>
+   809→   809→
+   810→   810→        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   811→   811→          <div className="space-y-1">
+   812→   812→            <Label className="text-blue-800">Nama Sekolah</Label>
+   813→   813→            <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="border-blue-200" />
+   814→   814→          </div>
+   815→   815→          <div className="space-y-1">
+   816→   816→            <Label className="text-blue-800">Total Pemilih (target)</Label>
+   817→   817→            <Input type="number" min={0} value={totalVoters} onChange={(e) => setTotalVoters(e.target.value)} className="border-blue-200" />
+   818→   818→          </div>
+   819→   819→        </div>
+   820→   820→        <div className="space-y-1">
+   821→   821→          <Label className="text-blue-800">Judul Pemilihan</Label>
+   822→   822→          <Input value={electionTitle} onChange={(e) => setElectionTitle(e.target.value)} className="border-blue-200" />
+   823→   823→        </div>
+   824→   824→        <div className="space-y-1">
+   825→   825→          <Label className="text-blue-800">Deskripsi</Label>
+   826→   826→          <Textarea value={electionDescription} onChange={(e) => setElectionDescription(e.target.value)} rows={2} className="border-blue-200" />
+   827→   827→        </div>
+   828→   828→        <div className="flex items-center gap-3">
+   829→   829→          <Button onClick={() => setIsActive(!isActive)} variant="outline" className={isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}>
+   830→   830→            {isActive ? "Status: AKTIF" : "Status: NONAKTIF"}
+   831→   831→          </Button>
+   832→   832→          <p className="text-xs text-blue-600">Aktif/nonaktif hanya untuk tampilan status.</p>
+   833→   833→        </div>
+   834→   834→        <Button onClick={save} disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
+   835→   835→          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+   836→   836→          Simpan Pengaturan
+   837→   837→        </Button>
+   838→   838→      </CardContent>
+   839→   839→    </Card>
+   840→   840→  );
+   841→   841→}
+   842→   842→
+   843→   843→/* ----------------------------- RESET ----------------------------- */
+   844→   844→function ResetCard({ onDone }: { onDone: () => void }) {
+   845→   845→  const [open, setOpen] = useState(false);
+   846→   846→  const [scope, setScope] = useState<"votes" | "all">("votes");
+   847→   847→  const [confirm, setConfirm] = useState(false);
+   848→   848→  const [loading, setLoading] = useState(false);
+   849→   849→  const { toast } = useToast();
+   850→   850→
+   851→   851→  const run = async () => {
+   852→   852→    setLoading(true);
+   853→   853→    const res = await fetch("/api/admin/reset", {
+   854→   854→      method: "POST",
+   855→   855→      headers: { "Content-Type": "application/json" },
+   856→   856→      body: JSON.stringify({ confirm: true, scope }),
+   857→   857→    });
+   858→   858→    setLoading(false);
+   859→   859→    setOpen(false);
+   860→   860→    setConfirm(false);
+   861→   861→    if (res.ok) {
+   862→   862→      toast({ title: scope === "all" ? "Pemilihan direset total." : "Semua suara dihapus." });
+   863→   863→      onDone();
+   864→   864→    } else {
+   865→   865→      toast({ title: "Gagal reset.", variant: "destructive" });
+   866→   866→    }
+   867→   867→  };
+   868→   868→
+   869→   869→  return (
+   870→   870→    <Card className="border-rose-200 bg-rose-50/50">
+   871→   871→      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+   872→   872→        <div className="flex items-center gap-3">
+   873→   873→          <AlertTriangle className="h-6 w-6 text-rose-500" />
+   874→   874→          <div>
+   875→   875→            <p className="font-bold text-rose-800">Reset Pemilihan</p>
+   876→   876→            <p className="text-xs text-rose-700/80">Hapus semua suara atau seluruh data (token + calon).</p>
+   877→   877→          </div>
+   878→   878→        </div>
+   879→   879→        <Button variant="outline" onClick={() => setOpen(true)} className="border-rose-300 text-rose-600 hover:bg-rose-100">
+   880→   880→          <RefreshCw className="mr-2 h-4 w-4" /> Reset
+   881→   881→        </Button>
+   882→   882→      </CardContent>
+   883→   883→
+   884→   884→      <Dialog open={open} onOpenChange={setOpen}>
+   885→   885→        <DialogContent className="sm:max-w-md">
+   886→   886→          <DialogHeader>
+   887→   887→            <DialogTitle className="text-rose-700">Konfirmasi Reset</DialogTitle>
+   888→   888→            <DialogDescription>Tindakan ini tidak dapat dibatalkan.</DialogDescription>
+   889→   889→          </DialogHeader>
+   890→   890→          <div className="space-y-3">
+   891→   891→            <div className="space-y-1">
+   892→   892→              <Label className="text-blue-800">Ruang Lingkup</Label>
+   893→   893→              <Select value={scope} onValueChange={(v) => setScope(v as "votes" | "all")}>
+   894→   894→                <SelectTrigger className="border-blue-200"><SelectValue /></SelectTrigger>
+   895→   895→                <SelectContent>
+   896→   896→                  <SelectItem value="votes">Hapus semua suara saja</SelectItem>
+   897→   897→                  <SelectItem value="all">Hapus suara + token + calon (SEMUA)</SelectItem>
+   898→   898→                </SelectContent>
+   899→   899→              </Select>
+   900→   900→            </div>
+   901→   901→            <label className="flex items-center gap-2 text-sm text-blue-800">
+   902→   902→              <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="h-4 w-4 rounded" />
+   903→   903→              Saya mengerti tindakan ini permanen.
+   904→   904→            </label>
+   905→   905→          </div>
+   906→   906→          <DialogFooter>
+   907→   907→            <Button variant="outline" onClick={() => setOpen(false)} className="border-blue-200">Batal</Button>
+   908→   908→            <Button onClick={run} disabled={!confirm || loading} className="bg-rose-600 text-white hover:bg-rose-700">
+   909→   909→              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+   910→   910→              Ya, Reset
+   911→   911→            </Button>
+   912→   912→          </DialogFooter>
+   913→   913→        </DialogContent>
+   914→   914→      </Dialog>
+   915→   915→    </Card>
+   916→   916→  );
+   917→   917→}
+   918→   918→

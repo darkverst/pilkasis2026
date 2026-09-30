@@ -13,6 +13,10 @@ function serialize(c: {
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }): Candidate {
   return {
     id: c.id,
@@ -23,6 +27,10 @@ function serialize(c: {
     mission: c.mission,
     order: c.order,
     color: c.color,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   };
 }
 

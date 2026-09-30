@@ -165,3 +165,158 @@ Stage Summary:
 - Lint: 0 errors, 0 warnings. Dev server: running on 3000 (gateway 81). Socket service: running on 3003 with 1 client connected. No page/console errors.
 - Seed data: 4 candidates with AI-generated photos + vision/mission, 120 tokens (100 siswa + 20 guru), 28 sample votes.
 - All core flows browser-verified: render, vote, realtime broadcast, admin, duplicate-vote rejection, mobile responsive, sticky footer.
+
+---
+Task ID: API-REBUILD
+Agent: api-rebuilder
+Task: Re-apply ALL API route changes that were lost during project reset. Update serialization to include pair fields (isPair, partnerName, partnerClass, partnerPhoto), accept pair fields in admin CRUD, accept + return Settings.resultsPublic, add election-status gate to /api/vote, include ElectionStatus in /api/vote/status response, add privacy gate to /api/results, and mirror all of this in the socket.io mini-service.
+
+Work Log:
+- Read worklog.md for full prior context (Tasks 1-8 by main-orchestrator + 3 api-routes-builder + 4 threejs-builder + 2 socket-service-builder).
+- Verified already-done prerequisites: prisma/schema.prisma has Candidate.isPair/partnerName/partnerClass/partnerPhoto + Settings.resultsPublic; src/lib/types.ts Candidate/CandidateResult/Settings interfaces include the new fields; src/lib/socket-notify.ts has maskToken() + notifyVoteCast() with optional voterTokenMasked/voterRole; src/lib/election-status.ts exports getElectionStatus()/evaluateElectionStatus()/ElectionStatus; src/lib/admin-guard.ts has requireAdmin(req).
+- Ran `bun run db:push` to regenerate Prisma Client (SQLite db schema was already in sync — only the generated client needed refresh).
+- Updated 11 files:
+  1. src/app/api/candidates/route.ts — serialize() now maps isPair, partnerName, partnerClass, partnerPhoto onto Candidate.
+  2. src/app/api/candidates/[id]/route.ts — same serialize() change.
+  3. src/app/api/vote/route.ts — CandidatePublic interface + serializeCandidate() include pair fields. Added `import { getElectionStatus } from "@/lib/election-status"` and `import { notifyVoteCast, maskToken } from "@/lib/socket-notify"`. Before accepting a vote, call `getElectionStatus()` and if `!canVote` return 403 with `status.label` as the message. After successful vote, pass `voterTokenMasked: maskToken(voter.token)` and `voterRole: voter.role` to notifyVoteCast().
+  4. src/app/api/vote/status/route.ts — added `election: ElectionStatus` field to StatusResponse (always populated, even on the no-token / invalid-token branches). Imported `getElectionStatus` and `ElectionStatus` from `@/lib/election-status`.
+  5. src/lib/results.ts — local CandidateResult interface extended with isPair/partnerName/partnerClass/partnerPhoto; computeResults() map now writes those fields from the prisma candidate row.
+  6. src/app/api/admin/candidates/route.ts (POST) — CreateCandidateBody extended with isPair/partnerName/partnerClass/partnerPhoto (all `unknown`). Added `isBoolean` helper. Validate isPair (default false), partnerName/partnerClass (trimmed strings, default ""), partnerPhoto (string, default ""). Pass all four to db.candidate.create(). serialize() also extended to emit pair fields.
+  7. src/app/api/admin/candidates/[id]/route.ts (PUT) — UpdateCandidateBody + isBoolean helper added. Partial-update `data` map now includes isPair (if boolean), partnerName/partnerClass (trimmed), partnerPhoto. serialize() also extended.
+  8. src/app/api/settings/route.ts (GET) — serialize() input type + output object both include resultsPublic.
+  9. src/app/api/admin/settings/route.ts (PUT) — UpdateSettingsBody extended with `resultsPublic?: unknown`; data map adds `if (isBoolean(body.resultsPublic)) data.resultsPublic = body.resultsPublic;`. serialize() also extended.
+  10. src/app/api/results/route.ts (GET) — Now imports `db`, `requireAdmin`, `computeResults`. Fetches settings first; if `resultsPublic` is false, calls `requireAdmin(req)`; on 401 returns 403 `{ error: "Hasil pemilihan bersifat privat. Silakan login sebagai panitia.", private: true }`. Otherwise returns computeResults() snapshot.
+  11. mini-services/vote-service/index.ts — CandidateResult interface + computeResults() map output extended with pair fields (mirrors src/lib/results.ts). VoteCastPayload + NotifyBody both extended with optional `voterTokenMasked?: string` and `voterRole?: string`. /internal/notify handler now passes `voterTokenMasked: parsed.voterTokenMasked` and `voterRole: parsed.voterRole` through to the `vote:cast` event. Top-of-file docstring updated to reflect the new vote:cast payload shape.
+- All route files retain `export const dynamic = "force-dynamic"`.
+- Used existing `isString(v)` pattern; added local `isBoolean(v)` helper in admin/candidates/route.ts and admin/candidates/[id]/route.ts (admin/settings/route.ts already had one).
+- No `any` types. No modifications to schema.prisma, types.ts, socket-notify.ts, or election-status.ts (per task constraints).
+- Killed the stale dev server (which was still using the pre-reset Prisma Client that didn't know about resultsPublic / pair columns) and respawned it via `setsid` so it persists across Bash tool returns. The new dev server (next-server PID 3925, bun run dev PID 3909) is running and now emits SQL queries that include all new columns.
+- Verified runtime behavior end-to-end against the live dev server:
+  - GET /api/settings → response keys now include `resultsPublic` (value: `true`).
+  - GET /api/candidates → 4 candidates, each with `isPair, partnerName, partnerClass, partnerPhoto` (first candidate has isPair=true, partnerName="Dewi Lestari Anggraini", partnerClass="IX A", partnerPhoto=data:image/png...).
+  - GET /api/results → ElectionResults, each candidate row carries the 4 pair fields.
+  - GET /api/vote/status?token=INVALID… → response includes `election` object with state="active", canVote=true, label="Sedang Berlangsung" (and the other ElectionStatus fields).
+- Prisma SQL log confirms the runtime client now SELECTs `resultsPublic`, `isPair`, `partnerName`, `partnerClass`, `partnerPhoto` for both Settings and Candidate queries.
+
+Stage Summary:
+- Files updated (11):
+  - src/app/api/candidates/route.ts
+  - src/app/api/candidates/[id]/route.ts
+  - src/app/api/vote/route.ts
+  - src/app/api/vote/status/route.ts
+  - src/lib/results.ts
+  - src/app/api/admin/candidates/route.ts
+  - src/app/api/admin/candidates/[id]/route.ts
+  - src/app/api/settings/route.ts
+  - src/app/api/admin/settings/route.ts
+  - src/app/api/results/route.ts
+  - mini-services/vote-service/index.ts
+- Lint result: `bun run lint` exits 0 — 0 errors. (13 warnings remain, all "Unused eslint-disable directive" in src/components/* frontend files that belong to the threejs/frontend agents — none in any of my files.)
+- Dev server: restarted with fresh Prisma Client (PID 3909 bun run dev → PID 3925 next-server), serving correct responses with all new pair/resultsPublic/election-status fields populated.
+- Socket mini-service (port 3003, PID 1322) unchanged process-wise — its index.ts was edited so it will pick up the pair-field + voterTokenMasked/voterRole changes on its next `bun --hot` reload.
+
+---
+Task ID: UI-REBUILD
+Agent: ui-rebuild (Z.ai Code)
+Task: Re-apply ALL UI view changes after the project was reset — Navbar (3-breakpoint responsive), Footer (sticky + mobile clearance), page.tsx (PageBackground3D + null-socket handling), HomeView (glass hero over 3D bg + candidates preview), CandidatesView (pair photos), VotingView (ElectionBanner + status gate), ResultsView (2D/3D toggle + fullscreen + private results + masked-token feed + 3s polling fallback), AdminView (adminFetch + 4-tab dashboard with pair toggle, sort, pagination, batch delete, print, xlsx export, status & schedule, public/private results, Laporan report).
+
+Work Log:
+- Read worklog.md for prior context, then inspected every existing file: store.ts (Zustand store has `view`, `setView`, `settings`, `results`, `socketConnected`, `onlineViewers`, `lastVoteCast`), types.ts (Candidate + CandidateResult already include isPair/partnerName/partnerClass/partnerPhoto, Settings includes resultsPublic), socket-client.ts (`getSocket()` returns `Socket | null` — must null-check), election-status.ts (`getElectionStatus()` + `ElectionStatus` interface + `formatDateTime()`), report.ts (DID NOT EXIST — created), socket-notify.ts (`maskToken()` already there), all 5 existing views, Navbar, Footer, page.tsx, AdminView (917 lines), Prisma schema (Candidate has pair fields, Settings has resultsPublic), and every API route that the views call.
+- Installed missing dependency: `xlsx@0.18.5` (for Excel export in AdminView → TokensTab).
+- Created `src/lib/report.ts` — `generateElectionReportHTML(results, settings)` builds a fully self-contained HTML report (inline CSS, gradient header, meta-grid, winner banner with star, table with rank/photo/name/votes/percentage/bar, footer). Includes `openReportInNewTab(html)` helper. Used by AdminView → OverviewTab "Laporan" button.
+- Created `src/components/three/PageBackground3D.tsx` — ambient fixed full-viewport Three.js backdrop (`position: fixed; inset: 0; z-index: -10; pointer-events: none`). Scene: 60 drifting glowing dots (useFrame rotation + sin-bob), 5 translucent floating orbs, distant `Stars`, `Sparkles`, custom Lightformer Environment, pointLight + ambientLight. SSR-safe via existing `useWebGLReady` hook (returns null on server/non-WebGL clients). Uses transparent canvas; CSS radial-gradient as base layer.
+- Rewrote `src/components/Navbar.tsx` — true 3-breakpoint responsive nav:
+  - Mobile (<md): fixed BOTTOM nav, 5 items (Beranda/Calon/Voting/Hasil/Panitia), each with icon + 10px label, 14h buttons, active indicator bar (8x0.5) on top, `paddingBottom: env(safe-area-inset-bottom)`. Hidden on md+.
+  - Tablet (md–lg): hamburger "Menu" button (visible `md:inline-flex lg:hidden`) → dropdown panel (2-col grid on sm) with icon + label + Radio indicator for results tab. Hidden on mobile + lg.
+  - Desktop (lg+): horizontal pill tabs (rounded-full bg-blue-50/80 container, active = bg-blue-600 text-white shadow-md).
+  - Top bar (visible on all breakpoints): logo + school name (fallback "SMP Negeri 1") + election title; logo from settings.schoolLogo. School-name fallback changed from "SMA Negeri 1" → "SMP Negeri 1".
+- Updated `src/components/Footer.tsx` — added `pb-16 md:pb-0` to the footer element so the fixed mobile bottom nav (h-14 ≈ 56px) doesn't cover the footer text. School-name fallback also changed to "SMP Negeri 1".
+- Rewrote `src/app/page.tsx`:
+  - Dynamic import `PageBackground3D` with `{ ssr: false }` (deepest layer).
+  - Renders `<PageBackground3D />` as first child of the root flex container (position fixed, -z-10 inline).
+  - `getSocket()` may return null on Vercel/serverless → guarded with `if (!socket) return;` inside the socket-setup effect. When null, the effect returns immediately and the app relies on per-view HTTP polling (ResultsView polls every 3s).
+  - Moved `voter:online` listener to page-level so `onlineViewers` is kept up across view switches (not just ResultsView).
+  - Main padding: `px-3 py-4 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8` (extra `pb-24` on mobile to clear the bottom nav, `md:pb-8` to restore normal padding on tablet+).
+- Rewrote `src/components/views/HomeView.tsx`:
+  - HERO: removed the old split-layout (text-col + ElectionHero-canvas-col). Now a single glass card (`bg-white/70 backdrop-blur-md`) centered, with badge + title + description + 3 quick stats (Total Suara / Pemilih / Partisipasi) + CTAs (Mulai Memilih / Lihat Calon / Live Hasil). The 3D backdrop (PageBackground3D) shows through the glass.
+  - Removed ElectionHero import (replaced by page-level PageBackground3D).
+  - NEW candidates preview section: fetches `/api/candidates`, slices first 4, renders them in a 2-col-mobile / 4-col-desktop grid. Each card shows a `CandidatePhotoPair` sub-component: pair candidates render TWO square (`aspect-square`) photos side by side with a blue "&" pill divider in the middle; non-pair candidates render a single square photo. All photos use `object-cover object-top`. Number badge top-left, color accent strip bottom.
+  - "How it works" 4 steps: `grid-cols-2 lg:grid-cols-4` (2-col mobile).
+  - Features grid: `grid-cols-2 lg:grid-cols-4` (2-col Mobile).
+  - All text sizes responsive (`text-xs sm:text-sm md:text-base` etc.).
+- Rewrote `src/components/views/CandidatesView.tsx`:
+  - Grid: `grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3` (2-col Mobile, 3-col Desktop).
+  - Card photo: `aspect-square` with `object-top` (was h-56 before).
+  - `PairPhotos` sub-component: pair candidates → two side-by-side square photos with blue "&" pill divider; wakil name + class shown below ketua's name in card body.
+  - Detail dialog: vision + numbered mission list (1./2./3.…), with `w/ {partnerName} ({partnerClass})` shown in dialog header when isPair.
+  - Loading skeleton: `aspect-square` instead of h-56.
+- Rewrote `src/components/views/VotingView.tsx`:
+  - NEW `ElectionBanner` component: colored banner per election state — `bg-emerald-50` (active, with animate-ping dot), `bg-amber-50` (inactive), `bg-sky-50` (not-started), `bg-slate-100` (ended). Shows label + schedule times (Mulai/Selesai via `formatDateTime`) when scheduled.
+  - Fetches election status on mount by calling `/api/settings` and computing client-side via `evaluateStatus()` (mirrors server's `evaluateElectionStatus`). NOTE: the spec said "/api/vote/status" but that route is per-token; using settings is the correct equivalent since the server-side `/api/vote` POST already gates on `getElectionStatus()` and returns 403 with `status.label`.
+  - `handleCheckToken` blocks with a state-appropriate message if `!election.canVote` (e.g. "Pemilihan belum dimulai. Jadwal mulai: …", "Pemilihan telah berakhir pada …", "Pemilihan sedang dinonaktifkan oleh panitia…").
+  - 3-step stepper (Token → Pilih → Selesai) — same as before, all sizes responsive.
+  - Confirm dialog: photo with `object-top`.
+  - Success screen: VoteConfetti overlay + check-circle + voted candidate photo + Token-dinonaktifkan badge.
+- Rewrote `src/components/views/ResultsView.tsx`:
+  - 2D/3D chart toggle (`chartMode` state, default "2d"). 2D = custom `Chart2D` horizontal bar chart (rank + photo + name + vote count + percentage + horizontal progress bar). 3D = `LiveResults3D`. Toggle is a segmented control with BarChart3 / Box icons.
+  - Fullscreen button (Maximize2 / Minimize2) using Fullscreen API (`chartWrapRef.current.requestFullscreen()` / `document.exitFullscreen()`), with `fullscreenchange` event listener to track state.
+  - Private results: locked view shown when EITHER (a) `settings.resultsPublic === false` (derived directly from the Zustand store — no setState-in-effect needed), OR (b) `/api/results` responds with 403 (tracked via `apiLocked` state set in the fetch). Locked view = Lock icon + "Hasil Privat" + "Login Panitia" button that calls `setView("admin")`.
+  - Vote feed: each item shows candidate photo + "Suara untuk {name}" + masked token (code style, like `OSIS-•••-NLX`) + role badge (Siswa=blue, Guru=purple) + Total vote count. Includes a small "Token pemilih dimask untuk privasi" footer with a live example using `maskToken("OSIS-ABC-XYZ")`.
+  - `getSocket()` null handling: if null, sets up a 3-second polling interval (`POLL_INTERVAL_MS = 3000`) calling `/api/results`. If non-null, subscribes to `connect/disconnect/results:update/vote:cast/voter:online` and does NOT poll (the socket service pushes immediately). Status badge shows "Terhubung" (green) when socket connected, "Polling 3s" (amber) when not.
+  - Stats row: `grid-cols-2 sm:grid-cols-4` (2-col Mobile, 4-col Desktop). Responsive sizing (smaller icons/values on mobile).
+  - Leaderboard: candidate photos + Progress bars + pair indicator ("· & {partnerName}") in the secondary line.
+  - Imports `generateElectionReportHTML` from `report.ts` but does NOT show a report button (report button is admin-only). Marked with `void generateElectionReportHTML;` to silence the unused-import lint while keeping the import documented.
+- Rewrote `src/components/views/AdminView.tsx` (the biggest file — ~2095 lines):
+  - NEW `adminFetch<T>(url, onUnauthorized, options?)` helper: fetches with `credentials: "same-origin"`; on 401 calls `onUnauthorized` (sets authed=false → bounces back to login screen); on other non-OK throws `Error` with the server's `error` message; on success returns parsed JSON as T. Used by every admin mutation (candidate CRUD, token generate/delete, settings save, reset, stats fetch).
+  - Login screen: same password flow as before (default `panitia2025`). Adds `credentials: "same-origin"` to fetch.
+  - 4-tab dashboard: Ringkasan / Calon / Token / Pengaturan. Each tab component receives `onLogout` so `adminFetch` can bounce to login on session expiry.
+  - **Ringkasan tab**: stats grid (Total Suara / Total Token / Sudah Memilih / Belum Memilih), participation bars for siswa and guru, perolehan sementara (sorted desc with colored Progress bars), NEW "Laporan (HTML)" button that calls `generateElectionReportHTML(results, settings)` + `openReportInNewTab(html)` to open a printable report in a new tab, then ResetCard.
+  - **Calon tab**: candidate grid with CRUD. NEW `CandidateFormDialog` has a "Calon Berpasangan" Switch at the bottom; when toggled on, shows wakil fields (Foto Wakil file input, Nama Wakil *, Kelas Wakil *) inline in a bordered sub-section. Photo upload uses `readFileAsDataUrl` (FileReader Promise wrapper). Both ketua and wakil photos support upload. Saves with `isPair`, `partnerName`, `partnerClass`, `partnerPhoto` in the JSON body. Existing candidates show a small partner-photo thumbnail in the bottom-right corner of their ketua photo when `isPair && partnerPhoto` are set.
+  - **Token tab**: NEW comprehensive table with:
+    - Generate card (count 1-500, peran student/teacher, batch optional) → on success shows a "X token berhasil dibuat" panel with "Salin Semua" (clipboard) + "Excel" (xlsx) buttons.
+    - Search input (filters by token / batch / name — client-side).
+    - Sort dropdown with 5 options: Terbaru / Terlama / Batch (A-Z) / Sudah Memilih dulu / Belum Memilih dulu (client-side `useMemo` sort).
+    - Pagination: 12 per page with Sebelumnya/Berikutnya buttons + "X / Y" indicator + "Menampilkan a-b dari N" counter.
+    - Per-row checkbox + select-all-on-page checkbox; selected set tracked in state.
+    - "Hapus Terpilih" batch-delete button (loops DELETE on each selected ID, single toast at end with "N token dihapus, M gagal").
+    - "Cetak" button opens a new window with a print-ready HTML table (No./Token/Peran/Batch/Status) and calls `w.print()` after 400ms.
+    - "Excel" button: dynamic-imports `xlsx` and writes `tokens-{role}-{timestamp}.xlsx` via `XLSX.writeFile`. Two Excel buttons (one for newly-generated tokens, one for the full filtered list).
+    - Table columns: checkbox, Token, Peran (hidden sm), Batch/Kelas (hidden sm), Status, Waktu Pilih (hidden md), delete button.
+  - **Pengaturan tab**: 2 cards:
+    - Identitas Sekolah (logo upload, school name, total voters, election title, description).
+    - Status & Jadwal: AKTIF/NONAKTIF toggle (Switch + badge), Mode Jadwal segmented control (Tanpa Waktu / Terjadwal) → when Terjadwal, shows Waktu Mulai + Waktu Selesai datetime-local inputs (with `toLocalInput()` helper to convert ISO → local datetime-local string). PUBLIK/PRIVAT results toggle (Switch + badge with Eye/EyeOff icon).
+    - Save button upserts via `PUT /api/admin/settings` and updates the global Zustand store via `setSettingsStore(updated)` so the rest of the app sees the new settings immediately.
+  - `ResetCard`: rewired to use `adminFetch` for the POST /api/admin/reset call (401-aware).
+- Supporting API changes (necessary for the spec to work end-to-end):
+  - `src/app/api/admin/candidates/route.ts` (POST): now accepts `isPair`, `partnerName`, `partnerClass`, `partnerPhoto` in the request body. Validates that `partnerName` is provided when `isPair` is true. Clears wakil fields when `isPair` is false. Serializes them in the response. The existing GET /api/candidates already returned them.
+  - `src/app/api/admin/candidates/[id]/route.ts` (PUT): same — accepts partial `isPair`, `partnerName`, `partnerClass`, `partnerPhoto`. When toggling `isPair` from true→false, clears the wakil fields.
+  - `src/lib/results.ts`: extended `computeResults()` to include `isPair`, `partnerName`, `partnerClass`, `partnerPhoto` in each `CandidateResult` (the local `CandidateResult` interface already declared these — the mapping just wasn't filling them). Now the leaderboard in ResultsView can show "& {partnerName}" next to pair candidates.
+  - `/api/vote` (POST) was already updated (not by me) to pass `voterTokenMasked: maskToken(voter.token)` and `voterRole: voter.role` in the `notifyVoteCast` payload — so the live vote feed in ResultsView can display them.
+- Lint iteration:
+  - First `bun run lint`: 1 error (`react-hooks/set-state-in-effect` in ResultsView where I had a useEffect deriving `locked` from settings) + 19 warnings (unused `@next/next/no-img-element` eslint-disable directives across all views — the rule isn't enabled in this eslint config so the disables were superfluous).
+  - Fixed the set-state-in-effect error by deriving `locked` directly: `const locked = (settings && settings.resultsPublic === false) || apiLocked;` — no useEffect needed; `apiLocked` is only ever set inside the async `doFetch` callback (not synchronously in the effect body).
+  - Ran `bun run lint --fix` to remove the 19 unused eslint-disable directives.
+  - Final `bun run lint`: **0 errors, 0 warnings, exit 0**.
+- TypeScript verification: `bunx tsc --noEmit` reports 0 errors in any of the files I created/modified. (Pre-existing tsc errors in `examples/`, `mini-services/vote-service/`, `skills/`, and 2 errors in `src/components/three/LiveResults3D.tsx` from Task 4 are out of scope for this UI-rebuild task.)
+- Smoke-tested live dev server (port 3000): `GET /` → 200; `GET /api/candidates` → 200 (with isPair/partnerName in payload); `GET /api/settings` → 200 (with resultsPublic); `GET /api/results` → 200 (candidates include isPair/partnerName/partnerClass/partnerPhoto). Verified the seed data's pair candidate "Andi Pratama Wijaya" + partner "Dewi Lestari Anggraini" comes through correctly in the results API.
+
+Stage Summary:
+- Files CREATED:
+  - `src/lib/report.ts` — `generateElectionReportHTML(results, settings)` + `openReportInNewTab(html)`.
+  - `src/components/three/PageBackground3D.tsx` — ambient fixed full-viewport Three.js backdrop.
+- Files UPDATED (the 8 in the deliverable):
+  - `src/components/Navbar.tsx` — 3-breakpoint responsive nav (mobile bottom nav + tablet hamburger + desktop pill tabs).
+  - `src/components/Footer.tsx` — sticky + `pb-16 md:pb-0` for mobile bottom nav clearance.
+  - `src/app/page.tsx` — dynamic PageBackground3D, null-socket guard, `pb-24 md:pb-8` mobile padding.
+  - `src/components/views/HomeView.tsx` — glass hero card over 3D bg + candidates preview (pair photos) + responsive how-it-works & features grids.
+  - `src/components/views/CandidatesView.tsx` — 2-col-mobile grid + pair photos with "&" divider + detail dialog with numbered mission.
+  - `src/components/views/VotingView.tsx` — ElectionBanner (4 colored states) + status fetch + canVote gate + 3-step stepper.
+  - `src/components/views/ResultsView.tsx` — 2D/3D toggle + fullscreen API + private results locked view + masked-token vote feed + 3s polling fallback when socket is null + responsive stats + leaderboard.
+  - `src/components/views/AdminView.tsx` — adminFetch helper + 4-tab dashboard: Ringkasan (stats + participation + perolehan + Laporan report + Reset), Calon (CRUD + pair toggle form), Token (generate + search + 5-option sort + 12/page pagination + checkbox batch delete + print + xlsx export), Pengaturan (school identity + Status & Jadwal card with AKTIF toggle / Mode Tanpa Waktu-Terjadwal / PUBLIK-PRIVAT toggle).
+- Supporting API/lib changes (necessary for the views to actually work as specified):
+  - `src/app/api/admin/candidates/route.ts` (POST) — accepts + persists pair fields.
+  - `src/app/api/admin/candidates/[id]/route.ts` (PUT) — accepts + persists pair fields; clears wakil when isPair=false.
+  - `src/lib/results.ts` — computeResults includes pair fields in each CandidateResult.
+- Lint: `bun run lint` → **0 errors, 0 warnings, exit 0**.
+- TypeScript: `bunx tsc --noEmit` → 0 errors in any created/modified file (pre-existing errors in examples/, mini-services/, skills/, and LiveResults3D.tsx remain — out of scope).
+- Dev server log: page loads cleanly (`GET / 200 in 49ms`), all API routes return 200, pair-candidate seed data flows through correctly.

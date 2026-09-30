@@ -1,51 +1,50 @@
-// Server-side helper: notify the socket.io mini-service (port 3003)
-// that something changed so it can push real-time updates to clients.
-//
-// This MUST be called after:
-//   - any successful vote (with candidate payload)
-//   - any admin mutation on candidates/settings/tokens (with empty payload `{}`)
-//
-// The fetch is fire-and-forget — if the socket service is down, we never
-// want to fail the user-facing request because of it.
+// Server-side helper: notify the socket.io mini-service.
+// On Vercel/serverless without a socket service, these become no-ops
+// and the frontend falls back to HTTP polling.
 
-const SOCKET_INTERNAL_URL = "http://localhost:3003/internal/notify";
+const SOCKET_INTERNAL_URL = process.env.SOCKET_SERVICE_URL || "http://localhost:3003/internal/notify";
+const SOCKET_ENABLED = !!process.env.SOCKET_SERVICE_URL || process.env.NODE_ENV === "development";
 
 export interface VoteNotificationPayload {
   candidateId: string;
   candidateName: string;
   candidatePhoto: string;
   candidateColor: string;
+  voterTokenMasked?: string;
+  voterRole?: string;
 }
 
-/**
- * Notify the socket.io mini-service that a vote was cast.
- * Includes the candidate payload so connected clients can render
- * a live "X just received a vote" animation.
- */
-export async function notifyVoteCast(
-  payload: VoteNotificationPayload,
-): Promise<void> {
+/** Mask a token like "OSIS-M6Q-NLX" → "OSIS-•••-NLX" (keep prefix + suffix, mask middle). */
+export function maskToken(token: string): string {
+  if (!token) return "";
+  const parts = token.split("-");
+  if (parts.length >= 3) {
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    const middleMasked = parts.slice(1, -1).map((p) => "•".repeat(Math.max(p.length, 3))).join("-");
+    return `${first}-${middleMasked}-${last}`;
+  }
+  if (parts.length === 2) {
+    return `${parts[0]}-${"•".repeat(Math.max(parts[1].length, 3))}`;
+  }
+  if (token.length <= 4) return "•".repeat(token.length);
+  return token.slice(0, 2) + "•".repeat(token.length - 4) + token.slice(-2);
+}
+
+export async function notifyVoteCast(payload: VoteNotificationPayload): Promise<void> {
+  if (!SOCKET_ENABLED) return;
   await fetch(SOCKET_INTERNAL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  }).catch(() => {
-    // ignore — socket service may be down
-  });
+  }).catch(() => {});
 }
 
-/**
- * Notify the socket.io mini-service that an admin mutation occurred
- * (candidate created/updated/deleted, settings changed, tokens generated,
- * reset performed, etc.). Sends an empty body so the service just
- * re-broadcasts a fresh results snapshot.
- */
 export async function notifyAdminChange(): Promise<void> {
+  if (!SOCKET_ENABLED) return;
   await fetch(SOCKET_INTERNAL_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
-  }).catch(() => {
-    // ignore — socket service may be down
-  });
+  }).catch(() => {});
 }

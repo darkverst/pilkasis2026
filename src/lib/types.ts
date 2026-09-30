@@ -4,11 +4,15 @@ export interface Candidate {
   id: string;
   name: string;
   class: string;
-  photo: string; // data URL or path
+  photo: string;
   vision: string;
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }
 
 export interface CandidateResult {
@@ -19,15 +23,19 @@ export interface CandidateResult {
   color: string;
   order: number;
   voteCount: number;
-  percentage: number; // 0-100 with one decimal
+  percentage: number;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }
 
 export interface ElectionResults {
   totalVoters: number;
   totalVotes: number;
-  turnOut: number; // 0-100 with one decimal
+  turnOut: number;
   candidates: CandidateResult[];
-  lastUpdated: string; // ISO string
+  lastUpdated: string;
 }
 
 export interface Settings {
@@ -39,6 +47,7 @@ export interface Settings {
   startTime: string | null;
   endTime: string | null;
   totalVoters: number;
+  resultsPublic: boolean;
 }
 
 export interface VoterInfo {
@@ -51,10 +60,3 @@ export interface VoterInfo {
   batch: string | null;
   createdAt: string;
 }
-
-// Real-time socket events (socket.io, port 3003, path "/")
-// Client emits: "subscribe:results"
-// Server emits:
-//   - "results:update"  payload: ElectionResults
-//   - "vote:cast"       payload: { candidateId, candidateName, candidatePhoto, candidateColor, totalVotes, timestamp }
-//   - "voter:online"    payload: { count }

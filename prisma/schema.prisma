@@ -6,6 +6,7 @@ generator client {
 }
 
 datasource db {
+  // Local dev uses SQLite. Production uses PostgreSQL (see schema.prod.prisma).
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
@@ -13,7 +14,7 @@ datasource db {
 // School election settings (single row, id = "default")
 model Settings {
   id                 String   @id @default("default")
-  schoolName         String   @default("SMA Negeri 1 Nusantara")
+  schoolName         String   @default("SMP Negeri 1 Nusantara")
   schoolLogo         String   @default("") // data URL or path
   electionTitle      String   @default("Pemilihan Ketua & Wakil OSIS 2025")
   electionDescription String  @default("Pilih pemimpin OSIS pilihanmu untuk periode 2025/2026.")
@@ -21,6 +22,7 @@ model Settings {
   startTime          DateTime?
   endTime            DateTime?
   totalVoters        Int      @default(0)
+  resultsPublic      Boolean  @default(true)
   updatedAt          DateTime @updatedAt
 }
 
@@ -28,12 +30,16 @@ model Settings {
 model Candidate {
   id        String   @id @default(cuid())
   name      String
-  class     String   // kelas, e.g. "XI IPA 1"
-  photo     String   @default("") // data URL or path
-  vision    String   // visi
-  mission   String   // misi
-  order     Int      @default(0) // urutan nomor urut
-  color     String   @default("#3b82f6") // accent color for charts
+  class     String   // kelas, e.g. "IX A"
+  photo     String   @default("")
+  vision    String
+  mission   String
+  order     Int      @default(0)
+  color     String   @default("#3b82f6")
+  isPair        Boolean  @default(false)
+  partnerName   String   @default("")
+  partnerClass  String   @default("")
+  partnerPhoto  String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   votes     Vote[]
@@ -42,13 +48,13 @@ model Candidate {
 // One-time-use voting tokens issued by admin/panitia
 model Voter {
   id        String    @id @default(cuid())
-  token     String    @unique // one-time use token
-  role      String    @default("student") // student | teacher
-  name      String?   // optional identity
+  token     String    @unique
+  role      String    @default("student")
+  name      String?
   hasVoted  Boolean   @default(false)
   votedAt   DateTime?
-  usedToken Boolean   @default(false) // token consumed (login or vote)
-  batch     String?   // token batch label
+  usedToken Boolean   @default(false)
+  batch     String?
   createdAt DateTime  @default(now())
   vote      Vote?
 }
@@ -57,7 +63,7 @@ model Voter {
 model Vote {
   id          String   @id @default(cuid())
   candidateId String
-  voterId     String   @unique // enforces one vote per voter
+  voterId     String   @unique
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   voter       Voter     @relation(fields: [voterId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

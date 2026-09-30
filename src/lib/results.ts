@@ -9,6 +9,10 @@ export interface CandidateResult {
   order: number;
   voteCount: number;
   percentage: number;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }
 
 export interface ElectionResults {
@@ -42,6 +46,10 @@ export async function computeResults(): Promise<ElectionResults> {
     order: c.order,
     voteCount: c._count.votes,
     percentage: totalVotes > 0 ? Math.round((c._count.votes / totalVotes) * 1000) / 10 : 0,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   }));
 
   return {

@@ -17,7 +17,7 @@
 //
 // Events emitted to clients:
 //   - "results:update"  payload: ElectionResults
-//   - "vote:cast"        payload: { candidateId, candidateName, candidatePhoto, candidateColor, totalVotes, timestamp }
+//   - "vote:cast"        payload: { candidateId, candidateName, candidatePhoto, candidateColor, totalVotes, timestamp, voterTokenMasked?, voterRole? }
 //   - "voter:online"     payload: { count }
 //
 // Events received from clients:
@@ -45,6 +45,10 @@ interface CandidateResult {
   order: number;
   voteCount: number;
   percentage: number; // 0-100 with one decimal
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }
 
 interface ElectionResults {
@@ -62,6 +66,8 @@ interface VoteCastPayload {
   candidateColor: string;
   totalVotes: number;
   timestamp: string;
+  voterTokenMasked?: string;
+  voterRole?: string;
 }
 
 interface NotifyBody {
@@ -69,6 +75,8 @@ interface NotifyBody {
   candidateName?: string;
   candidatePhoto?: string;
   candidateColor?: string;
+  voterTokenMasked?: string;
+  voterRole?: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -106,6 +114,10 @@ async function computeResults(): Promise<ElectionResults> {
       totalVotes > 0
         ? Math.round((c._count.votes / totalVotes) * 1000) / 10
         : 0,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   }));
 
   return {
@@ -234,6 +246,8 @@ async function handleInternalRequest(
           candidateColor: parsed.candidateColor || "",
           totalVotes: results.totalVotes,
           timestamp: new Date().toISOString(),
+          voterTokenMasked: parsed.voterTokenMasked,
+          voterRole: parsed.voterRole,
         };
         io.emit("vote:cast", voteCast);
       }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { notifyVoteCast } from "@/lib/socket-notify";
+import { notifyVoteCast, maskToken } from "@/lib/socket-notify";
+import { getElectionStatus } from "@/lib/election-status";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ interface CandidatePublic {
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }
 
 function isString(v: unknown): v is string {
@@ -34,6 +39,10 @@ function serializeCandidate(c: {
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }): CandidatePublic {
   return {
     id: c.id,
@@ -44,6 +53,10 @@ function serializeCandidate(c: {
     mission: c.mission,
     order: c.order,
     color: c.color,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   };
 }
 
@@ -51,6 +64,15 @@ function serializeCandidate(c: {
 // Cast a vote on behalf of a voter identified by their one-time token.
 export async function POST(req: Request) {
   try {
+    // Election status gate — reject votes if the election is not currently active.
+    const status = await getElectionStatus();
+    if (!status.canVote) {
+      return NextResponse.json(
+        { error: status.label },
+        { status: 403 },
+      );
+    }
+
     const body = (await req.json()) as VoteRequestBody;
     const token = isString(body.token) ? body.token.trim() : "";
     const candidateId = isString(body.candidateId) ? body.candidateId.trim() : "";
@@ -121,6 +143,8 @@ export async function POST(req: Request) {
       candidateName: candidate.name,
       candidatePhoto: candidate.photo,
       candidateColor: candidate.color,
+      voterTokenMasked: maskToken(voter.token),
+      voterRole: voter.role,
     });
 
     return NextResponse.json({

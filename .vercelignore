@@ -1,0 +1,36 @@
+# Files / directories excluded from the Vercel deployment upload.
+# Keep the production bundle lean — the Next.js app does not need any of
+# these at runtime.
+
+# Mini socket.io service (deployed separately if you want real-time; never
+# bundled into the Next.js serverless functions).
+mini-services/
+
+# Seed assets (school logo, candidate portraits, seed.ts) — only used locally
+# to populate the dev database. Production seeding happens via the in-app
+# admin dashboard (see DEPLOY.md).
+seed-assets/
+
+# Local SQLite database + Prisma migrations folder.
+db/
+
+# Skill definitions, examples, and internal tooling — not part of the app.
+skills/
+examples/
+tests/
+
+# Logs.
+*.log
+
+# Local env (Vercel manages its own env vars via the dashboard).
+.env
+.env.local
+
+# Deploy guide is for humans, not the build.
+DEPLOY.md
+
+# Agent context (internal worklog files).
+agent-ctx/
+
+# Local-only SQLite/Postgres swap helper artefacts (kept local).
+prisma/schema.prisma.bak

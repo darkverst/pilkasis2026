@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getElectionStatus, type ElectionStatus } from "@/lib/election-status";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,17 @@ interface StatusResponse {
   role: "student" | "teacher";
   voterName: string | null;
   votedAt: string | null;
+  election: ElectionStatus;
 }
 
 // GET /api/vote/status?token=XXX
 // A token is "valid" if it exists in the DB.
-// Returns whether the voter has already cast a vote and when.
+// Returns whether the voter has already cast a vote, when, and the current
+// election status (so the UI can show whether voting is currently allowed).
 export async function GET(req: NextRequest) {
   try {
+    const election = await getElectionStatus();
+
     const token = req.nextUrl.searchParams.get("token")?.trim();
     if (!token) {
       const body: StatusResponse = {
@@ -24,6 +29,7 @@ export async function GET(req: NextRequest) {
         role: "student",
         voterName: null,
         votedAt: null,
+        election,
       };
       return NextResponse.json(body);
     }
@@ -37,6 +43,7 @@ export async function GET(req: NextRequest) {
         role: "student",
         voterName: null,
         votedAt: null,
+        election,
       };
       return NextResponse.json(body);
     }
@@ -47,6 +54,7 @@ export async function GET(req: NextRequest) {
       role: voter.role === "teacher" ? "teacher" : "student",
       voterName: voter.name ?? null,
       votedAt: voter.votedAt ? voter.votedAt.toISOString() : null,
+      election,
     };
     return NextResponse.json(body);
   } catch (err) {

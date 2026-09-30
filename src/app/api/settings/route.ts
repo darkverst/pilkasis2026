@@ -13,6 +13,7 @@ function serialize(s: {
   startTime: Date | null;
   endTime: Date | null;
   totalVoters: number;
+  resultsPublic: boolean;
 }): Settings {
   return {
     schoolName: s.schoolName,
@@ -23,6 +24,7 @@ function serialize(s: {
     startTime: s.startTime ? s.startTime.toISOString() : null,
     endTime: s.endTime ? s.endTime.toISOString() : null,
     totalVoters: s.totalVoters,
+    resultsPublic: s.resultsPublic,
   };
 }
 

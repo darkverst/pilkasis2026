@@ -14,10 +14,18 @@ interface CreateCandidateBody {
   mission?: unknown;
   color?: unknown;
   order?: unknown;
+  isPair?: unknown;
+  partnerName?: unknown;
+  partnerClass?: unknown;
+  partnerPhoto?: unknown;
 }
 
 function isString(v: unknown): v is string {
   return typeof v === "string";
+}
+
+function isBoolean(v: unknown): v is boolean {
+  return typeof v === "boolean";
 }
 
 function isNumber(v: unknown): v is number {
@@ -33,6 +41,10 @@ function serialize(c: {
   mission: string;
   order: number;
   color: string;
+  isPair: boolean;
+  partnerName: string;
+  partnerClass: string;
+  partnerPhoto: string;
 }): Candidate {
   return {
     id: c.id,
@@ -43,10 +55,14 @@ function serialize(c: {
     mission: c.mission,
     order: c.order,
     color: c.color,
+    isPair: c.isPair,
+    partnerName: c.partnerName,
+    partnerClass: c.partnerClass,
+    partnerPhoto: c.partnerPhoto,
   };
 }
 
-// POST /api/admin/candidates  body: { name, class, photo, vision, mission, color, order? }
+// POST /api/admin/candidates  body: { name, class, photo, vision, mission, color, order?, isPair?, partnerName?, partnerClass?, partnerPhoto? }
 export async function POST(req: NextRequest) {
   try {
     const unauthorized = requireAdmin(req);
@@ -61,10 +77,20 @@ export async function POST(req: NextRequest) {
     const color = isString(body.color) ? body.color : "#3b82f6";
     const photo = isString(body.photo) ? body.photo : "";
     const order = isNumber(body.order) ? body.order : 0;
+    const isPair = isBoolean(body.isPair) ? body.isPair : false;
+    const partnerName = isString(body.partnerName) ? body.partnerName.trim() : "";
+    const partnerClass = isString(body.partnerClass) ? body.partnerClass.trim() : "";
+    const partnerPhoto = isString(body.partnerPhoto) ? body.partnerPhoto : "";
 
     if (!name) {
       return NextResponse.json(
         { error: "Nama calon wajib diisi" },
+        { status: 400 },
+      );
+    }
+    if (isPair && !partnerName) {
+      return NextResponse.json(
+        { error: "Nama wakil calon wajib diisi untuk calon berpasangan" },
         { status: 400 },
       );
     }
@@ -78,6 +104,10 @@ export async function POST(req: NextRequest) {
         mission,
         color,
         order,
+        isPair,
+        partnerName: isPair ? partnerName : "",
+        partnerClass: isPair ? partnerClass : "",
+        partnerPhoto: isPair ? partnerPhoto : "",
       },
     });
 

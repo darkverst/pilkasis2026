@@ -15,6 +15,7 @@ interface UpdateSettingsBody {
   startTime?: unknown;
   endTime?: unknown;
   totalVoters?: unknown;
+  resultsPublic?: unknown;
 }
 
 function isString(v: unknown): v is string {
@@ -45,6 +46,7 @@ function serialize(s: {
   startTime: Date | null;
   endTime: Date | null;
   totalVoters: number;
+  resultsPublic: boolean;
 }): Settings {
   return {
     schoolName: s.schoolName,
@@ -55,6 +57,7 @@ function serialize(s: {
     startTime: s.startTime ? s.startTime.toISOString() : null,
     endTime: s.endTime ? s.endTime.toISOString() : null,
     totalVoters: s.totalVoters,
+    resultsPublic: s.resultsPublic,
   };
 }
 
@@ -73,6 +76,7 @@ export async function PUT(req: NextRequest) {
     if (isString(body.electionTitle)) data.electionTitle = body.electionTitle;
     if (isString(body.electionDescription)) data.electionDescription = body.electionDescription;
     if (isBoolean(body.isActive)) data.isActive = body.isActive;
+    if (isBoolean(body.resultsPublic)) data.resultsPublic = body.resultsPublic;
     if (isNumber(body.totalVoters)) data.totalVoters = Math.floor(body.totalVoters);
 
     if (body.startTime === null) {

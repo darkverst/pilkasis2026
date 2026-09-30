@@ -1169,8 +1169,94 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  // Filter + sort (client-side) — MUST be defined before functions that use it
+  // (exportTableExcel, printTokens, toggleSelectAll).
+  const filteredSorted = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = tokens;
+    if (q) {
+      list = list.filter(
+        (t) =>
+          t.token.toLowerCase().includes(q) ||
+          (t.batch || "").toLowerCase().includes(q) ||
+          (t.name || "").toLowerCase().includes(q),
+      );
+    }
+    const sorted = [...list];
+    switch (sort) {
+      case "newest":
+        sorted.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        break;
+      case "oldest":
+        sorted.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+        break;
+      case "batch":
+        sorted.sort((a, b) => (a.batch || "").localeCompare(b.batch || ""));
+        break;
+      case "voted-first":
+        sorted.sort(
+          (a, b) =>
+            Number(b.hasVoted) - Number(a.hasVoted) ||
+            new Date(b.votedAt || 0).getTime() - new Date(a.votedAt || 0).getTime(),
+        );
+        break;
+      case "unvoted-first":
+        sorted.sort(
+          (a, b) =>
+            Number(a.hasVoted) - Number(b.hasVoted) ||
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+        break;
+    }
+    return sorted;
+  }, [tokens, search, sort]);
+
+  /** Export tokens from the TABLE (not generated ones) to Excel.
+   *  - If any tokens are selected → export selected.
+   *  - Otherwise → export all filtered+sorted tokens. */
+  const exportTableExcel = async () => {
+    const selectedTokens = tokens.filter((t) => selectedIds.has(t.id));
+    const list = selectedTokens.length > 0 ? selectedTokens : filteredSorted;
+    if (list.length === 0) {
+      toast({ title: "Tidak ada token untuk diekspor.", variant: "destructive" });
+      return;
+    }
+    try {
+      const XLSX = await import("xlsx");
+      const rows = list.map((t, i) => ({
+        No: i + 1,
+        Token: t.token,
+        Peran: t.role === "teacher" ? "Guru" : "Siswa",
+        Batch: t.batch || "",
+        Status: t.hasVoted ? "Sudah Memilih" : "Belum Memilih",
+        "Waktu Pilih": t.votedAt ? new Date(t.votedAt).toLocaleString("id-ID") : "",
+        "Dibuat": new Date(t.createdAt).toLocaleString("id-ID"),
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [
+        { wch: 5 }, { wch: 18 }, { wch: 8 }, { wch: 16 },
+        { wch: 16 }, { wch: 22 }, { wch: 22 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Token Pemilihan");
+      const label = selectedTokens.length > 0 ? "terpilih" : "semua";
+      XLSX.writeFile(wb, `token-${label}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast({ title: `${list.length} token diekspor ke Excel.` });
+    } catch {
+      toast({ title: "Gagal export Excel.", variant: "destructive" });
+    }
+  };
+
   const printTokens = () => {
-    const list = filteredSorted.length > 0 ? filteredSorted : tokens;
+    // If tokens are selected, print selected. Otherwise print all filtered.
+    const selectedTokens = tokens.filter((t) => selectedIds.has(t.id));
+    const list = selectedTokens.length > 0 ? selectedTokens : (filteredSorted.length > 0 ? filteredSorted : tokens);
     if (list.length === 0) {
       toast({ title: "Tidak ada token untuk dicetak." });
       return;
@@ -1250,53 +1336,6 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
     load();
   };
 
-  // Filter + sort (client-side)
-  const filteredSorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = tokens;
-    if (q) {
-      list = list.filter(
-        (t) =>
-          t.token.toLowerCase().includes(q) ||
-          (t.batch || "").toLowerCase().includes(q) ||
-          (t.name || "").toLowerCase().includes(q),
-      );
-    }
-    const sorted = [...list];
-    switch (sort) {
-      case "newest":
-        sorted.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        break;
-      case "oldest":
-        sorted.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
-        break;
-      case "batch":
-        sorted.sort((a, b) => (a.batch || "").localeCompare(b.batch || ""));
-        break;
-      case "voted-first":
-        sorted.sort(
-          (a, b) =>
-            Number(b.hasVoted) - Number(a.hasVoted) ||
-            new Date(b.votedAt || 0).getTime() - new Date(a.votedAt || 0).getTime(),
-        );
-        break;
-      case "unvoted-first":
-        sorted.sort(
-          (a, b) =>
-            Number(a.hasVoted) - Number(b.hasVoted) ||
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
-        break;
-    }
-    return sorted;
-  }, [tokens, search, sort]);
-
   const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginated = filteredSorted.slice(
@@ -1313,12 +1352,18 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
     });
   };
   const toggleSelectAll = () => {
-    const visibleIds = paginated.map((t) => t.id);
-    const allVisibleSelected = visibleIds.every((id) => selectedIds.has(id));
+    // Select ALL tokens in the current filter/sort (not just the current page).
+    const allIds = filteredSorted.map((t) => t.id);
+    const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
-      else visibleIds.forEach((id) => next.add(id));
+      if (allSelected) {
+        // Deselect all filtered tokens.
+        allIds.forEach((id) => next.delete(id));
+      } else {
+        // Select all filtered tokens.
+        allIds.forEach((id) => next.add(id));
+      }
       return next;
     });
   };
@@ -1481,8 +1526,8 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={exportExcel}
-                  disabled={!generated}
+                  onClick={exportTableExcel}
+                  disabled={filteredSorted.length === 0}
                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
                   <Download className="mr-1.5 h-3.5 w-3.5" /> Excel
@@ -1540,6 +1585,22 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
                 <Button
                   size="sm"
                   variant="ghost"
+                  onClick={exportTableExcel}
+                  className="h-7 px-2 text-xs text-blue-600"
+                >
+                  <Download className="mr-1 h-3 w-3" /> Export Excel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={printTokens}
+                  className="h-7 px-2 text-xs text-blue-600"
+                >
+                  <Printer className="mr-1 h-3 w-3" /> Cetak
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
                   onClick={() => setSelectedIds(new Set())}
                   className="h-7 text-xs text-blue-600"
                 >
@@ -1567,11 +1628,11 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
                       <th className="p-2">
                         <Checkbox
                           checked={
-                            paginated.length > 0 &&
-                            paginated.every((t) => selectedIds.has(t.id))
+                            filteredSorted.length > 0 &&
+                            filteredSorted.every((t) => selectedIds.has(t.id))
                           }
                           onCheckedChange={toggleSelectAll}
-                          aria-label="Pilih semua di halaman ini"
+                          aria-label="Pilih semua token"
                         />
                       </th>
                       <th className="p-2 font-semibold">Token</th>

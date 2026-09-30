@@ -16,77 +16,70 @@ import {
   CheckCircle2,
   Radio,
   GraduationCap,
+  Trophy,
+  KeyRound,
+  Search,
+  Sparkles,
+  Heart,
 } from "lucide-react";
 
-/** A reusable pair-of-photos block for a candidate (with optional wakil). */
-function CandidatePhotoPair({
-  candidate,
-  className,
-}: {
-  candidate: Pick<Candidate, "photo" | "name" | "isPair" | "partnerPhoto" | "partnerName">;
-  className?: string;
-}) {
-  if (!candidate.isPair || !candidate.partnerPhoto) {
+/** Render a candidate's photo — single or pair (side-by-side or combined). */
+function CandidatePhoto({ candidate }: { candidate: Candidate }) {
+  // Pair with separate photos → show two side by side with "&" divider
+  if (candidate.isPair && candidate.partnerPhoto) {
     return (
-      <div className={`relative aspect-square w-full overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100 ${className ?? ""}`}>
-        {candidate.photo ? (
-           
-          <img
-            src={candidate.photo}
-            alt={`Foto ${candidate.name}`}
-            className="h-full w-full object-cover object-top"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-5xl font-black text-blue-200 sm:text-6xl">
-              {candidate.name.charAt(0)}
-            </span>
-          </div>
-        )}
+      <div className="relative flex aspect-square w-full items-stretch gap-0.5 overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
+        <div className="relative flex-1 overflow-hidden">
+          {candidate.photo ? (
+             
+            <img src={candidate.photo} alt={candidate.name} className="h-full w-full object-cover object-top" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-4xl font-black text-blue-200">{candidate.name.charAt(0)}</div>
+          )}
+        </div>
+        <div className="z-10 flex items-center">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white shadow-md sm:h-8 sm:w-8">&amp;</span>
+        </div>
+        <div className="relative flex-1 overflow-hidden">
+          {candidate.partnerPhoto ? (
+             
+            <img src={candidate.partnerPhoto} alt={candidate.partnerName} className="h-full w-full object-cover object-top" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-4xl font-black text-blue-200">{candidate.partnerName?.charAt(0) || "?"}</div>
+          )}
+        </div>
       </div>
     );
   }
+  // Single photo (individual, OR pair with combined photo)
   return (
-    <div className={`relative flex aspect-square w-full items-stretch gap-1 ${className ?? ""}`}>
-      <div className="relative flex-1 overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
-        {candidate.photo ? (
-           
-          <img
-            src={candidate.photo}
-            alt={`Foto ${candidate.name}`}
-            className="h-full w-full object-cover object-top"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-4xl font-black text-blue-200">
-              {candidate.name.charAt(0)}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="flex items-center justify-center px-0.5">
-        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white shadow-sm sm:text-xs">
-          &amp;
-        </span>
-      </div>
-      <div className="relative flex-1 overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
-        {candidate.partnerPhoto ? (
-           
-          <img
-            src={candidate.partnerPhoto}
-            alt={`Foto wakil ${candidate.partnerName}`}
-            className="h-full w-full object-cover object-top"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-4xl font-black text-blue-200">
-              {candidate.partnerName.charAt(0)}
-            </span>
-          </div>
-        )}
-      </div>
+    <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
+      {candidate.photo ? (
+         
+        <img src={candidate.photo} alt={candidate.name} className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-5xl font-black text-blue-200 sm:text-6xl">{candidate.name.charAt(0)}</div>
+      )}
     </div>
   );
+}
+
+/** Build a display name — "Andi & Dewi" for pairs, "Andi" for individual. */
+function displayName(c: Candidate): string {
+  if (c.isPair && c.partnerName) {
+    const first = c.name.split(" ")[0];
+    const partner = c.partnerName.split(" ")[0];
+    return `${first} & ${partner}`;
+  }
+  return c.name;
+}
+
+/** Build a class string — "IX A & IX B" for pairs with different classes. */
+function displayClass(c: Candidate): string {
+  if (c.isPair && c.partnerClass && c.partnerClass !== c.class) {
+    return `${c.class} & ${c.partnerClass}`;
+  }
+  return c.class;
 }
 
 export function HomeView({
@@ -112,23 +105,60 @@ export function HomeView({
     };
   }, []);
 
+  // Find the current leader for the highlight badge
+  const leader = results?.candidates
+    ? [...results.candidates].sort((a, b) => b.voteCount - a.voteCount)[0]
+    : null;
+
+  // How-it-works steps — improved flow with better descriptions
+  const steps = [
+    {
+      step: 1,
+      title: "Dapatkan Token",
+      desc: "Panitia membagikan token rahasia sekali pakai kepada setiap pemilih yang sah.",
+      icon: KeyRound,
+      color: "from-blue-500 to-sky-500",
+    },
+    {
+      step: 2,
+      title: "Masukkan Token",
+      desc: "Buka menu Voting, masukkan token Anda untuk masuk ke bilik suara digital.",
+      icon: ShieldCheck,
+      color: "from-sky-500 to-cyan-500",
+    },
+    {
+      step: 3,
+      title: "Pilih Calon",
+      desc: "Pelajari visi & misi setiap calon, lalu pilih SATU calon pilihanmu dengan konfirmasi.",
+      icon: Vote,
+      color: "from-cyan-500 to-blue-500",
+    },
+    {
+      step: 4,
+      title: "Selesai & Pantau",
+      desc: "Suara tercatat aman. Token dinonaktifkan otomatis. Pantau hasil secara realtime.",
+      icon: CheckCircle2,
+      color: "from-indigo-400 to-blue-500",
+    },
+  ];
+
   const features = [
     {
       icon: Vote,
       title: "Satu Suara, Satu Token",
-      desc: "Setiap pemilih menerima token sekali pakai dari panitia. Satu orang = satu suara, dijamin aman.",
+      desc: "Token sekali pakai menjamin satu orang = satu suara. Tidak bisa curang.",
       color: "from-blue-500 to-sky-500",
     },
     {
       icon: Radio,
       title: "Hasil Realtime",
-      desc: "Pantau perolehan suara calon secara langsung dengan visualisasi 3D yang interaktif.",
+      desc: "Pantau perolehan suara langsung dengan grafik 2D & visualisasi 3D interaktif.",
       color: "from-sky-500 to-cyan-500",
     },
     {
       icon: ShieldCheck,
       title: "Aman & Transparan",
-      desc: "Token terenkripsi, suara anonim, dan data terverifikasi. Transparan untuk seluruh warga sekolah.",
+      desc: "Token terenkripsi, suara anonim, data terverifikasi. Transparan untuk warga sekolah.",
       color: "from-cyan-500 to-blue-500",
     },
     {
@@ -140,16 +170,21 @@ export function HomeView({
   ];
 
   return (
-    <div className="space-y-8 sm:space-y-10 lg:space-y-12">
-      {/* ============== HERO — glass card over 3D bg ============== */}
+    <div className="space-y-8 sm:space-y-12">
+      {/* ============== HERO ============== */}
       <section className="relative">
-        <div className="glass-card mx-auto w-full max-w-5xl rounded-2xl border-white/40 px-4 py-6 shadow-xl shadow-blue-100/40 backdrop-blur-md sm:rounded-3xl sm:px-8 sm:py-10 lg:px-12 lg:py-12 bg-white/70">
+        {/* Decorative gradient glow */}
+        <div className="absolute inset-0 -z-10 flex items-center justify-center">
+          <div className="h-72 w-72 rounded-full bg-blue-300/20 blur-3xl sm:h-96 sm:w-96" />
+        </div>
+
+        <div className="glass-card mx-auto w-full max-w-5xl rounded-2xl border-white/40 px-4 py-6 shadow-2xl shadow-blue-200/30 backdrop-blur-md sm:rounded-3xl sm:px-8 sm:py-10 lg:px-12 lg:py-12 bg-white/70">
           <div className="text-center">
-            <Badge className="mb-3 inline-flex bg-blue-100 text-blue-700 hover:bg-blue-100 sm:mb-4">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Badge className="mb-3 inline-flex bg-blue-600 text-white shadow-md hover:bg-blue-600 sm:mb-4">
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
               Pemilihan Sedang Berlangsung
             </Badge>
-            <h1 className="text-2xl font-black leading-tight text-blue-950 sm:text-3xl md:text-4xl xl:text-5xl">
+            <h1 className="text-2xl font-black leading-tight text-blue-950 drop-shadow-sm sm:text-4xl md:text-5xl">
               {settings?.electionTitle || "Pemilihan Ketua & Wakil OSIS 2025"}
             </h1>
             <p className="mx-auto mt-2 max-w-xl text-xs text-blue-800/80 sm:mt-3 sm:text-sm md:text-base">
@@ -158,19 +193,25 @@ export function HomeView({
             </p>
           </div>
 
-          {/* Quick stats */}
+          {/* Quick stats — improved with icons */}
           <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
             <StatCard
+              icon={Vote}
               label="Total Suara"
               value={String(results?.totalVotes ?? 0)}
+              color="from-blue-500 to-sky-500"
             />
             <StatCard
+              icon={Users}
               label="Pemilih"
               value={String(results?.totalVoters ?? 0)}
+              color="from-sky-500 to-cyan-500"
             />
             <StatCard
+              icon={BarChart3}
               label="Partisipasi"
               value={`${results?.turnOut ?? 0}%`}
+              color="from-cyan-500 to-blue-500"
             />
           </div>
 
@@ -191,6 +232,7 @@ export function HomeView({
               className="border-blue-200 bg-white/70 text-blue-700 hover:bg-blue-50"
               size="sm"
             >
+              <Search className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Lihat Calon
             </Button>
             <Button
@@ -216,7 +258,7 @@ export function HomeView({
             Calon Ketua & Wakil OSIS
           </h2>
           <p className="mx-auto mt-1 max-w-2xl text-xs text-blue-700/80 sm:mt-2 sm:text-sm">
-            Empat calon utama siap membawa OSIS ke arah yang lebih baik.
+            Kenali pasangan calon pilihanmu sebelum menyalurkan suara.
           </p>
         </div>
 
@@ -229,38 +271,60 @@ export function HomeView({
           </Card>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {candidates.map((c, idx) => (
-              <Card
-                key={c.id}
-                onClick={() => setView("candidates")}
-                className="group cursor-pointer overflow-hidden border-blue-100 bg-white/80 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100"
-              >
-                <div className="relative">
-                  <CandidatePhotoPair candidate={c} />
-                  <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-blue-700 shadow ring-2 ring-blue-500 sm:h-8 sm:w-8">
-                    {idx + 1}
+            {candidates.map((c, idx) => {
+              const result = results?.candidates.find((r) => r.id === c.id);
+              const isLeader = leader?.id === c.id && (leader?.voteCount ?? 0) > 0;
+              return (
+                <Card
+                  key={c.id}
+                  onClick={() => setView("candidates")}
+                  className="group cursor-pointer overflow-hidden border-blue-100 bg-white/85 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100"
+                >
+                  <div className="relative">
+                    <CandidatePhoto candidate={c} />
+                    {/* Number badge */}
+                    <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-blue-700 shadow ring-2 ring-blue-500 sm:h-8 sm:w-8">
+                      {idx + 1}
+                    </div>
+                    {/* Leader badge */}
+                    {isLeader && (
+                      <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white shadow sm:text-xs">
+                        <Trophy className="h-3 w-3" /> Terdepan
+                      </div>
+                    )}
+                    {/* Color accent bar */}
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-1.5"
+                      style={{ backgroundColor: c.color }}
+                    />
                   </div>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-1.5"
-                    style={{ backgroundColor: c.color }}
-                  />
-                </div>
-                <CardContent className="p-3 sm:p-4">
-                  <p className="truncate text-sm font-bold text-blue-950 sm:text-base">
-                    {c.name}
-                  </p>
-                  {c.isPair && c.partnerName ? (
-                    <p className="truncate text-[11px] text-blue-500 sm:text-xs">
-                      &amp; {c.partnerName}
+                  <CardContent className="p-3 sm:p-4">
+                    {/* Paslon name — prominent */}
+                    <p className="truncate text-sm font-bold text-blue-950 sm:text-base">
+                      {displayName(c)}
                     </p>
-                  ) : null}
-                  <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-blue-600 sm:text-xs">
-                    <GraduationCap className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{c.class}</span>
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+                    {/* Class — shows both classes if different */}
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-blue-600 sm:text-xs">
+                      <GraduationCap className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{displayClass(c)}</span>
+                    </p>
+                    {/* Vote count if available */}
+                    {result && result.voteCount > 0 && (
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-blue-700 sm:text-xs">
+                        <span className="font-semibold">{result.voteCount} suara</span>
+                        <span>{result.percentage}%</span>
+                      </div>
+                    )}
+                    {/* Pair badge */}
+                    {c.isPair && (
+                      <Badge className="mt-2 bg-blue-50 text-blue-600 hover:bg-blue-50 text-[10px]">
+                        <Users className="mr-1 h-2.5 w-2.5" /> Pasangan
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
@@ -276,44 +340,74 @@ export function HomeView({
         </div>
       </section>
 
-      {/* ============== HOW IT WORKS ============== */}
+      {/* ============== HOW IT WORKS — improved timeline flow ============== */}
       <section>
         <div className="mb-4 text-center sm:mb-6">
+          <Badge className="mb-2 bg-blue-100 text-blue-700 hover:bg-blue-100 sm:mb-3">
+            <Sparkles className="mr-1.5 h-3 w-3" /> Panduan
+          </Badge>
           <h2 className="text-xl font-black text-blue-950 sm:text-2xl md:text-3xl">
             Cara Kerja Pemilihan
           </h2>
           <p className="mt-1 text-xs text-blue-700/80 sm:mt-2 sm:text-sm">
-            Empat langkah sederhana untuk menyalurkan aspirasimu
+            Empat langkah mudah untuk menyalurkan aspirasimu
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {[
-            { step: "01", title: "Dapatkan Token", desc: "Panitia membagikan token sekali pakai.", icon: ShieldCheck },
-            { step: "02", title: "Masukkan Token", desc: "Gunakan token untuk masuk bilik digital.", icon: Clock },
-            { step: "03", title: "Pilih Calon", desc: "Pelajari visi-misi, lalu pilih satu calon.", icon: Vote },
-            { step: "04", title: "Selesai", desc: "Suara tercatat aman. Pantau hasil realtime.", icon: CheckCircle2 },
-          ].map((s) => {
+
+        {/* Desktop: horizontal timeline with connecting line */}
+        <div className="relative hidden lg:block">
+          {/* Connecting line */}
+          <div className="absolute left-0 right-0 top-[44px] h-0.5 bg-gradient-to-r from-blue-200 via-blue-300 to-blue-200" />
+          <div className="relative grid grid-cols-4 gap-4">
+            {steps.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.step} className="flex flex-col items-center text-center">
+                  {/* Step circle */}
+                  <div className={`flex h-[88px] w-[88px] items-center justify-center rounded-full bg-gradient-to-br ${s.color} text-white shadow-lg ring-4 ring-white`}>
+                    <Icon className="h-8 w-8" />
+                  </div>
+                  {/* Step number badge */}
+                  <div className="mt-3 flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white">
+                      {s.step}
+                    </span>
+                    <h3 className="text-sm font-bold text-blue-950">{s.title}</h3>
+                  </div>
+                  <p className="mt-1.5 max-w-[200px] text-xs text-blue-700/70">
+                    {s.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mobile/Tablet: vertical steps */}
+        <div className="space-y-3 lg:hidden">
+          {steps.map((s, idx) => {
             const Icon = s.icon;
             return (
-              <Card
-                key={s.step}
-                className="group relative overflow-hidden border-blue-100 bg-white/80 transition hover:shadow-lg"
-              >
-                <CardContent className="p-3 sm:p-5">
-                  <div className="mb-2 flex items-center justify-between sm:mb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white sm:h-11 sm:w-11">
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Card key={s.step} className="group relative overflow-hidden border-blue-100 bg-white/85 backdrop-blur transition hover:shadow-lg">
+                <CardContent className="flex items-start gap-3 p-3 sm:p-4">
+                  {/* Step icon with number */}
+                  <div className="relative shrink-0">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${s.color} text-white shadow-md sm:h-14 sm:w-14`}>
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                     </div>
-                    <span className="text-xl font-black text-blue-100 sm:text-3xl">
+                    <span className="absolute -left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white ring-2 ring-white">
                       {s.step}
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-blue-950 sm:text-base">
-                    {s.title}
-                  </h3>
-                  <p className="mt-1 text-[11px] text-blue-700/70 sm:text-sm">
-                    {s.desc}
-                  </p>
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-blue-950 sm:text-base">{s.title}</h3>
+                    <p className="mt-0.5 text-xs text-blue-700/70 sm:text-sm">{s.desc}</p>
+                  </div>
+                  {/* Arrow connector (except last) */}
+                  {idx < steps.length - 1 && (
+                    <ArrowRight className="hidden h-4 w-4 shrink-0 self-center text-blue-200 sm:block" />
+                  )}
                 </CardContent>
               </Card>
             );
@@ -335,37 +429,66 @@ export function HomeView({
           {features.map((f) => {
             const Icon = f.icon;
             return (
-              <Card key={f.title} className="overflow-hidden border-blue-100 bg-white/80">
+              <Card key={f.title} className="overflow-hidden border-blue-100 bg-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-lg">
                 <CardContent className="p-3 sm:p-5">
                   <div
                     className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md sm:mb-3 sm:h-11 sm:w-11`}
                   >
                     <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <h3 className="text-sm font-bold text-blue-950 sm:text-base">
-                    {f.title}
-                  </h3>
-                  <p className="mt-1 text-[11px] text-blue-700/70 sm:text-sm">
-                    {f.desc}
-                  </p>
+                  <h3 className="text-sm font-bold text-blue-950 sm:text-base">{f.title}</h3>
+                  <p className="mt-1 text-[11px] text-blue-700/70 sm:text-sm">{f.desc}</p>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       </section>
+
+      {/* ============== CTA FOOTER ============== */}
+      <section>
+        <Card className="overflow-hidden border-blue-200 bg-gradient-to-r from-blue-600 to-sky-500">
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:p-8">
+            <Heart className="h-8 w-8 text-white animate-pulse" />
+            <div>
+              <h2 className="text-xl font-black text-white sm:text-2xl">Suara Anda Menentukan Masa Depan OSIS</h2>
+              <p className="mt-1 text-sm text-blue-50">Gunakan hak pilihmu sekarang — satu token, satu suara, untuk perubahan yang lebih baik.</p>
+            </div>
+            <Button
+              onClick={() => setView("vote")}
+              className="bg-white text-blue-700 shadow-lg hover:bg-blue-50"
+              size="sm"
+            >
+              <Vote className="mr-1.5 h-4 w-4" />
+              Mulai Memilih
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: typeof Vote;
+  label: string;
+  value: string;
+  color: string;
+}) {
   return (
     <Card className="glass-card border-blue-100">
       <CardContent className="p-2 sm:p-3">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-blue-600 sm:text-[11px]">
-          {label}
-        </p>
-        <p className="text-lg font-black text-blue-950 sm:text-2xl">{value}</p>
+        <div className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${color} text-white shadow sm:h-7 sm:w-7`}>
+          <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+        </div>
+        <p className="text-[9px] font-medium uppercase tracking-wide text-blue-600 sm:text-[11px]">{label}</p>
+        <p className="text-base font-black text-blue-950 sm:text-2xl">{value}</p>
       </CardContent>
     </Card>
   );

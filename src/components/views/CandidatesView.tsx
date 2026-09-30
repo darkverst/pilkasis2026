@@ -213,21 +213,32 @@ function CandidateCard({
       </div>
 
       <CardContent className="p-3 sm:p-5">
+        {/* Paslon name — combined display for pairs */}
         <h3 className="truncate text-sm font-bold text-blue-950 sm:text-base sm:text-lg">
-          {candidate.name}
+          {candidate.isPair && candidate.partnerName
+            ? `${candidate.name.split(" ")[0]} & ${candidate.partnerName.split(" ")[0]}`
+            : candidate.name}
         </h3>
-        {candidate.isPair && candidate.partnerName ? (
-          <p className="truncate text-[11px] font-medium text-blue-500 sm:text-xs">
-            &amp; {candidate.partnerName}
-            {candidate.partnerClass ? (
-              <span className="text-blue-400"> &middot; {candidate.partnerClass}</span>
-            ) : null}
+        {/* Full names for pairs (second line) */}
+        {candidate.isPair && candidate.partnerName && (
+          <p className="truncate text-[10px] text-blue-400 sm:text-[11px]">
+            {candidate.name} &amp; {candidate.partnerName}
           </p>
-        ) : null}
+        )}
+        {/* Class — shows both if different */}
         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-blue-600 sm:text-xs">
           <GraduationCap className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{candidate.class}</span>
+          <span className="truncate">
+            {candidate.isPair && candidate.partnerClass && candidate.partnerClass !== candidate.class
+              ? `${candidate.class} & ${candidate.partnerClass}`
+              : candidate.class}
+          </span>
         </p>
+        {candidate.isPair && (
+          <Badge className="mt-1.5 bg-blue-50 text-blue-600 hover:bg-blue-50 text-[10px]">
+            <Users className="mr-1 h-2.5 w-2.5" /> Pasangan
+          </Badge>
+        )}
         <p className="mt-2 line-clamp-2 text-[11px] text-blue-700/70 sm:text-sm">
           <span className="font-semibold text-blue-800">Visi:</span> {candidate.vision}
         </p>

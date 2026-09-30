@@ -722,6 +722,11 @@ function CandidateFormDialog({
   const [color, setColor] = useState(candidate?.color || "#3b82f6");
   const [photo, setPhoto] = useState(candidate?.photo || "");
   const [isPair, setIsPair] = useState(!!candidate?.isPair);
+  // For pairs: "together" = one combined photo (stored in `photo`, partnerPhoto empty),
+  // "separate" = two individual photos. For non-pairs this is always "together".
+  const [photoMode, setPhotoMode] = useState<"together" | "separate">(
+    candidate?.isPair && candidate?.partnerPhoto ? "separate" : "together",
+  );
   const [partnerName, setPartnerName] = useState(candidate?.partnerName || "");
   const [partnerClass, setPartnerClass] = useState(
     candidate?.partnerClass || "",
@@ -763,6 +768,10 @@ function CandidateFormDialog({
       return;
     }
     setSaving(true);
+    // When pair uses a combined photo ("together"), clear partnerPhoto so the
+    // display logic knows to show a single image instead of two.
+    const finalPartnerPhoto =
+      isPair && photoMode === "separate" ? partnerPhoto : "";
     const body = {
       name,
       class: kelas,
@@ -774,7 +783,7 @@ function CandidateFormDialog({
       isPair,
       partnerName: isPair ? partnerName : "",
       partnerClass: isPair ? partnerClass : "",
-      partnerPhoto: isPair ? partnerPhoto : "",
+      partnerPhoto: finalPartnerPhoto,
     };
     const url = candidate
       ? `/api/admin/candidates/${candidate.id}`
@@ -819,7 +828,7 @@ function CandidateFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          {/* Photo (ketua) */}
+          {/* Photo (ketua / combined) */}
           <div className="flex items-center gap-3">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-blue-50 ring-1 ring-blue-100">
               {photo ? (
@@ -836,7 +845,11 @@ function CandidateFormDialog({
               )}
             </div>
             <div className="flex-1 space-y-1">
-              <Label className="text-blue-800">Foto Calon (Ketua)</Label>
+              <Label className="text-blue-800">
+                {isPair && photoMode === "together"
+                  ? " Foto Bersama (Ketua & Wakil)"
+                  : "Foto Calon (Ketua)"}
+              </Label>
               <Input
                 ref={photoRef}
                 type="file"
@@ -939,35 +952,72 @@ function CandidateFormDialog({
 
             {isPair && (
               <div className="mt-3 space-y-3 border-t border-blue-100 pt-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-blue-100">
-                    {partnerPhoto ? (
-                       
-                      <img
-                        src={partnerPhoto}
-                        alt="wakil"
-                        className="h-full w-full object-cover object-top"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-blue-300">
-                        <GraduationCap className="h-5 w-5" />
-                      </div>
-                    )}
+                {/* Photo mode selector — together or separate */}
+                <div className="space-y-1.5">
+                  <Label className="text-blue-800">Mode Foto Pasangan</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPhotoMode("together")}
+                      className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                        photoMode === "together"
+                          ? "bg-blue-600 text-white shadow"
+                          : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      }`}
+                    >
+                      📸 Foto Bersama
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoMode("separate")}
+                      className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                        photoMode === "separate"
+                          ? "bg-blue-600 text-white shadow"
+                          : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      }`}
+                    >
+                      👥 Foto Terpisah
+                    </button>
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-blue-800">Foto Wakil</Label>
-                    <Input
-                      ref={partnerPhotoRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) =>
-                        e.target.files?.[0] &&
-                        handlePhoto(e.target.files[0], setPartnerPhoto)
-                      }
-                      className="text-xs"
-                    />
-                  </div>
+                  <p className="text-[11px] text-blue-500">
+                    {photoMode === "together"
+                      ? "Gunakan satu foto berdua (foto di atas)."
+                      : "Unggah foto ketua & wakil secara terpisah."}
+                  </p>
                 </div>
+
+                {/* Partner photo upload — only shown in "separate" mode */}
+                {photoMode === "separate" && (
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-blue-100">
+                      {partnerPhoto ? (
+                         
+                        <img
+                          src={partnerPhoto}
+                          alt="wakil"
+                          className="h-full w-full object-cover object-top"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-blue-300">
+                          <GraduationCap className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-blue-800">Foto Wakil</Label>
+                      <Input
+                        ref={partnerPhotoRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          e.target.files?.[0] &&
+                          handlePhoto(e.target.files[0], setPartnerPhoto)
+                        }
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-blue-800">Nama Wakil *</Label>

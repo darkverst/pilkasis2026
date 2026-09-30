@@ -6,68 +6,77 @@ import { useSyncExternalStore } from "react";
  * Shared SSR-safe hook for determining whether the component has mounted on
  * the client AND whether WebGL is available.
  *
- * Uses `useSyncExternalStore` so that:
- *   - On the server, both values are `false`.
- *   - During client hydration, both values are `false` (matches SSR — no
- *     hydration mismatch).
- *   - After hydration, `mounted` flips to `true` and `webglOk` reflects the
- *     actual WebGL availability.
- *
- * This avoids the `react-hooks/set-state-in-effect` lint error that arises
- * when using `useEffect + setState(true)` to track mounting.
+ * Uses `useSyncExternalStore` with a real subscribe function that triggers
+ * a re-render on the first animation frame after hydration. This avoids the
+ * `react-hooks/set-state-in-effect` lint error while ensuring the component
+ * re-renders after hydration to show the WebGL canvas.
  */
 
-let cachedWebGL: boolean | null = null;
+let clientMounted = false;
+let webglAvailable = false;
+const listeners = new Set<() => void>();
+let initialized = false;
 
-function detectWebGLClient(): boolean {
+function detectWebGL(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const canvas = document.createElement("canvas");
     const gl =
-      canvas.getContext("webgl") ||
-      canvas.getContext("experimental-webgl");
+      (canvas.getContext("webgl") as WebGLRenderingContext | null) ||
+      (canvas.getContext("experimental-webgl") as WebGLRenderingContext | null);
     return !!gl;
   } catch {
     return false;
   }
 }
 
-function emptySubscribe(): () => void {
-  return () => {};
+function ensureInitialized() {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+  // Schedule the mount transition on the next animation frame so it
+  // happens after React hydration completes.
+  requestAnimationFrame(() => {
+    clientMounted = true;
+    webglAvailable = detectWebGL();
+    listeners.forEach((l) => l());
+  });
+}
+
+function subscribe(callback: () => void): () => void {
+  listeners.add(callback);
+  ensureInitialized();
+  return () => {
+    listeners.delete(callback);
+  };
 }
 
 function getMountedSnapshot(): boolean {
-  return true;
+  return clientMounted;
+}
+
+function getWebGLSnapshot(): boolean {
+  return webglAvailable;
 }
 
 function getServerSnapshot(): boolean {
   return false;
 }
 
-function getWebGLSnapshot(): boolean {
-  if (cachedWebGL === null) {
-    cachedWebGL = detectWebGLClient();
-  }
-  return cachedWebGL;
-}
-
 export interface WebGLReadyState {
-  /** True after hydration on the client. Always false on the server. */
   mounted: boolean;
-  /** True if WebGL is available on the client. Always false on the server. */
   webglOk: boolean;
 }
 
 export function useWebGLReady(): WebGLReadyState {
   const mounted = useSyncExternalStore(
-    emptySubscribe,
+    subscribe,
     getMountedSnapshot,
-    getServerSnapshot
+    getServerSnapshot,
   );
   const webglOk = useSyncExternalStore(
-    emptySubscribe,
+    subscribe,
     getWebGLSnapshot,
-    getServerSnapshot
+    getServerSnapshot,
   );
   return { mounted, webglOk };
 }

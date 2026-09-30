@@ -78,7 +78,7 @@ export default function Home() {
       <PageBackground3D />
 
       <Navbar settings={settings} />
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-3 py-4 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-10 xl:px-16">
+      <main className="mx-auto w-full max-w-[1700px] flex-1 px-3 py-4 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-10 xl:px-16">
         {view === "home" && <HomeView settings={settings} results={results} />}
         {view === "candidates" && <CandidatesView />}
         {view === "vote" && <VotingView />}

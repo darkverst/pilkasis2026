@@ -48,7 +48,7 @@ export function Navbar({ settings }: { settings: Settings | null }) {
          ============================================================ */}
       <header className="sticky top-0 z-40 w-full">
         <div className="glass-card border-b border-white/40 shadow-sm">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-8">
+          <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-10 xl:px-16">
             {/* Logo + title */}
             <button
               onClick={() => go("home")}
@@ -123,7 +123,7 @@ export function Navbar({ settings }: { settings: Settings | null }) {
           {/* Tablet dropdown */}
           {menuOpen && (
             <div className="border-t border-blue-100 bg-white/95 backdrop-blur lg:hidden">
-              <nav className="mx-auto grid max-w-7xl grid-cols-1 gap-1 px-3 py-3 sm:grid-cols-2 sm:px-4">
+              <nav className="mx-auto grid max-w-[1400px] grid-cols-1 gap-1 px-3 py-3 sm:grid-cols-2 sm:px-4">
                 {TABS.map((tab) => {
                   const Icon = tab.icon;
                   const active = view === tab.key;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import type { ElectionResults } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { getSocket } from "@/lib/socket-client";
@@ -31,14 +30,9 @@ import {
   Eye,
 } from "lucide-react";
 
-const LiveResults3D = dynamic(() => import("@/components/three/LiveResults3D"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[420px] w-full items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-sky-100">
-      <div className="animate-pulse text-blue-400">Memuat visualisasi 3D…</div>
-    </div>
-  ),
-});
+// Direct import — the component is SSR-safe via useWebGLReady hook.
+// Dynamic import with ssr:false caused ChunkLoadError on some builds.
+import LiveResults3D from "@/components/three/LiveResults3D";
 
 interface VoteFeedItem {
   candidateId: string;

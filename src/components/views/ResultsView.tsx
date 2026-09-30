@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ElectionResults } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { getSocket } from "@/lib/socket-client";
@@ -64,7 +64,6 @@ export function ResultsView() {
   const [feed, setFeed] = useState<VoteFeedItem[]>([]);
   const [chartMode, setChartMode] = useState<ChartMode>("2d");
   const [apiLocked, setApiLocked] = useState(false);
-  const chartWrapRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // silence the import so it isn't tree-shaken away; safe in client component
@@ -137,26 +136,23 @@ export function ResultsView() {
     };
   }, [setResults, setLastVoteCast, setOnlineViewers, setSocketConnected]);
 
-  // Fullscreen API
-  const toggleFullscreen = async () => {
-    const el = chartWrapRef.current;
-    if (!el) return;
-    try {
-      if (!document.fullscreenElement) {
-        await el.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {
-      /* ignore — Fullscreen API may be unavailable (e.g. iOS Safari) */
-    }
+  // Fullscreen — uses a CSS overlay (fixed inset-0) instead of the browser
+  // Fullscreen API. This avoids cross-origin iframe restrictions and gives us
+  // full control over the layout (hide everything except the chart + exit btn).
+  const toggleFullscreen = () => {
+    setIsFullscreen((v) => !v);
   };
 
+  // Lock body scroll when in fullscreen overlay mode.
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
+    if (isFullscreen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isFullscreen]);
 
   // ============== Private results view ==============
   if (locked) {
@@ -191,6 +187,67 @@ export function ResultsView() {
   const leader = results?.candidates
     ? [...results.candidates].sort((a, b) => b.voteCount - a.voteCount)[0]
     : null;
+
+  // ============== Fullscreen overlay ==============
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-blue-50 via-white to-sky-50">
+        {/* Top bar — exit + mode toggle + socket status */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 bg-white/80 px-3 py-2.5 backdrop-blur sm:px-6">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+              <Radio className="mr-1.5 h-3 w-3 animate-pulse" /> Live Hasil
+            </Badge>
+            {socketConnected && (
+              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500" /> Terhubung
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full bg-blue-50 p-1">
+              <button
+                onClick={() => setChartMode("2d")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  chartMode === "2d" ? "bg-blue-600 text-white shadow" : "text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                <BarChart3 className="h-3.5 w-3.5" /> 2D
+              </button>
+              <button
+                onClick={() => setChartMode("3d")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  chartMode === "3d" ? "bg-blue-600 text-white shadow" : "text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                <Box className="h-3.5 w-3.5" /> 3D
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+              className="border-rose-200 text-rose-600 hover:bg-rose-50"
+            >
+              <Minimize2 className="mr-1.5 h-3.5 w-3.5" /> Keluar
+            </Button>
+          </div>
+        </div>
+
+        {/* Chart — fills remaining space */}
+        <div className="flex-1 overflow-hidden p-3 sm:p-6">
+          {chartMode === "3d" ? (
+            <LiveResults3D
+              results={results || { totalVoters: 0, totalVotes: 0, turnOut: 0, candidates: [], lastUpdated: new Date().toISOString() }}
+              height={typeof window !== "undefined" ? window.innerHeight - 120 : 600}
+            />
+          ) : (
+            <Chart2D results={results} fullscreen />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -309,12 +366,7 @@ export function ResultsView() {
             </Button>
           </div>
 
-          <div
-            ref={chartWrapRef}
-            className={`overflow-hidden rounded-xl bg-gradient-to-br from-blue-50/40 to-sky-50 ${
-              isFullscreen ? "h-full min-h-[100vh]" : ""
-            }`}
-          >
+          <div className="overflow-hidden rounded-xl bg-gradient-to-br from-blue-50/40 to-sky-50">
             {chartMode === "3d" ? (
               <LiveResults3D
                 results={
@@ -326,7 +378,7 @@ export function ResultsView() {
                     lastUpdated: new Date().toISOString(),
                   }
                 }
-                height={isFullscreen ? 600 : 440}
+                height={440}
               />
             ) : (
               <Chart2D results={results} />
@@ -525,7 +577,7 @@ export function ResultsView() {
   );
 }
 
-function Chart2D({ results }: { results: ElectionResults | null }) {
+function Chart2D({ results, fullscreen = false }: { results: ElectionResults | null; fullscreen?: boolean }) {
   if (!results || results.candidates.length === 0) {
     return (
       <div className="flex h-[420px] w-full flex-col items-center justify-center text-center text-blue-700/70">
@@ -538,52 +590,43 @@ function Chart2D({ results }: { results: ElectionResults | null }) {
   const sorted = [...results.candidates].sort((a, b) => b.voteCount - a.voteCount);
 
   return (
-    <div className="space-y-3 p-3 sm:p-4">
+    <div className={`space-y-4 ${fullscreen ? "h-full overflow-y-auto p-4 sm:p-6" : "p-3 sm:p-4"}`}>
       {sorted.map((c, idx) => {
         const widthPct = (c.voteCount / max) * 100;
         return (
-          <div key={c.id} className="space-y-1">
+          <div key={c.id} className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
-                  idx === 0 && c.voteCount > 0
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-blue-50 text-blue-600"
-                }`}
+                className={`flex shrink-0 items-center justify-center rounded-full font-black ${
+                  fullscreen ? "h-8 w-8 text-sm" : "h-5 w-5 text-[10px]"
+                } ${idx === 0 && c.voteCount > 0 ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-600"}`}
               >
                 {idx + 1}
               </span>
-              <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-blue-50">
+              <div className={`shrink-0 overflow-hidden rounded-full bg-blue-50 ${fullscreen ? "h-10 w-10" : "h-6 w-6"}`}>
                 {c.photo ? (
                    
-                  <img
-                    src={c.photo}
-                    alt={c.name}
-                    className="h-full w-full object-cover object-top"
-                  />
+                  <img src={c.photo} alt={c.name} className="h-full w-full object-cover object-top" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[10px] font-black text-blue-300">
+                  <div className="flex h-full w-full items-center justify-center font-black text-blue-300">
                     {c.name.charAt(0)}
                   </div>
                 )}
               </div>
-              <p className="min-w-0 flex-1 truncate text-xs font-semibold text-blue-950 sm:text-sm">
+              <p className={`min-w-0 flex-1 truncate font-semibold text-blue-950 ${fullscreen ? "text-base sm:text-lg" : "text-xs sm:text-sm"}`}>
                 {c.name}
               </p>
-              <span className="text-xs font-bold text-blue-700 sm:text-sm">
+              <span className={`shrink-0 font-bold text-blue-700 ${fullscreen ? "text-lg sm:text-xl" : "text-xs sm:text-sm"}`}>
                 {c.voteCount}
               </span>
-              <span className="text-[10px] text-blue-400 sm:text-xs">
+              <span className={`shrink-0 text-blue-400 ${fullscreen ? "text-sm sm:text-base" : "text-[10px] sm:text-xs"}`}>
                 {c.percentage}%
               </span>
             </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-blue-50">
+            <div className={`w-full overflow-hidden rounded-full bg-blue-50 ${fullscreen ? "h-5" : "h-3"}`}>
               <div
                 className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${Math.max(2, widthPct)}%`,
-                  backgroundColor: c.color,
-                }}
+                style={{ width: `${Math.max(2, widthPct)}%`, backgroundColor: c.color }}
               />
             </div>
           </div>

@@ -171,55 +171,74 @@ export function HomeView({
 
   return (
     <div className="space-y-8 sm:space-y-12">
-      {/* ============== HERO ============== */}
-      <section className="relative">
-        {/* Decorative gradient glow */}
-        <div className="absolute inset-0 -z-10 flex items-center justify-center">
-          <div className="h-72 w-72 rounded-full bg-blue-300/20 blur-3xl sm:h-96 sm:w-96" />
-        </div>
+      {/* ============== HERO — rich gradient banner ============== */}
+      <section className="relative overflow-hidden rounded-2xl shadow-2xl shadow-blue-300/30 sm:rounded-3xl">
+        {/* Layered gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-sky-400" />
+        {/* Decorative blurred orbs */}
+        <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
+        <div className="absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-cyan-300/30 blur-3xl" />
+        <div className="absolute right-1/4 top-0 h-40 w-40 rounded-full bg-indigo-400/30 blur-2xl" />
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
 
-        <div className="glass-card mx-auto w-full max-w-5xl rounded-2xl border-white/40 px-4 py-6 shadow-2xl shadow-blue-200/30 backdrop-blur-md sm:rounded-3xl sm:px-8 sm:py-10 lg:px-12 lg:py-12 bg-white/70">
+        {/* Content */}
+        <div className="relative px-5 py-8 sm:px-10 sm:py-12 lg:px-14 lg:py-16">
           <div className="text-center">
-            <Badge className="mb-3 inline-flex bg-blue-600 text-white shadow-md hover:bg-blue-600 sm:mb-4">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
-              Pemilihan Sedang Berlangsung
-            </Badge>
-            <h1 className="text-2xl font-black leading-tight text-blue-950 drop-shadow-sm sm:text-4xl md:text-5xl">
+            {/* Animated status badge */}
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 backdrop-blur-md ring-1 ring-white/30 sm:mb-5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              </span>
+              <span className="text-xs font-bold text-white sm:text-sm">
+                Pemilihan Sedang Berlangsung
+              </span>
+            </div>
+
+            {/* Title with gradient text effect on dark bg */}
+            <h1 className="mx-auto max-w-3xl text-3xl font-black leading-tight text-white drop-shadow-lg sm:text-4xl md:text-5xl lg:text-6xl">
               {settings?.electionTitle || "Pemilihan Ketua & Wakil OSIS 2025"}
             </h1>
-            <p className="mx-auto mt-2 max-w-xl text-xs text-blue-800/80 sm:mt-3 sm:text-sm md:text-base">
+
+            {/* Description */}
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-blue-50 sm:mt-4 sm:text-base lg:text-lg">
               {settings?.electionDescription ||
                 "Pilih pemimpin OSIS pilihanmu untuk periode 2025/2026."}
             </p>
           </div>
 
-          {/* Quick stats — improved with icons */}
-          <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
-            <StatCard
+          {/* Quick stats — glass cards on gradient bg */}
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-4">
+            <HeroStat
               icon={Vote}
               label="Total Suara"
               value={String(results?.totalVotes ?? 0)}
-              color="from-blue-500 to-sky-500"
             />
-            <StatCard
+            <HeroStat
               icon={Users}
               label="Pemilih"
               value={String(results?.totalVoters ?? 0)}
-              color="from-sky-500 to-cyan-500"
             />
-            <StatCard
+            <HeroStat
               icon={BarChart3}
               label="Partisipasi"
               value={`${results?.turnOut ?? 0}%`}
-              color="from-cyan-500 to-blue-500"
             />
           </div>
 
           {/* CTAs */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:mt-6 sm:gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 sm:mt-8 sm:gap-3">
             <Button
               onClick={() => setView("vote")}
-              className="bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700"
+              className="bg-white text-blue-700 shadow-xl shadow-blue-900/20 hover:bg-blue-50"
               size="sm"
             >
               <Vote className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
@@ -229,7 +248,7 @@ export function HomeView({
             <Button
               variant="outline"
               onClick={() => setView("candidates")}
-              className="border-blue-200 bg-white/70 text-blue-700 hover:bg-blue-50"
+              className="border-white/40 bg-white/10 text-white backdrop-blur-md hover:bg-white/20 hover:text-white"
               size="sm"
             >
               <Search className="mr-1.5 h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -238,7 +257,7 @@ export function HomeView({
             <Button
               variant="ghost"
               onClick={() => setView("results")}
-              className="text-blue-700 hover:bg-blue-50"
+              className="text-white hover:bg-white/15 hover:text-white"
               size="sm"
             >
               <BarChart3 className="mr-1.5 h-4 w-4 sm:h-5 sm:w-5" />
@@ -246,6 +265,21 @@ export function HomeView({
             </Button>
           </div>
         </div>
+
+        {/* Bottom wave decoration */}
+        <svg
+          className="absolute bottom-0 left-0 right-0 w-full"
+          viewBox="0 0 1440 80"
+          fill="none"
+          preserveAspectRatio="none"
+          style={{ height: "40px" }}
+        >
+          <path
+            d="M0 80L60 70C120 60 240 40 360 35C480 30 600 40 720 45C840 50 960 50 1080 45C1200 40 1320 30 1380 25L1440 20V80H0Z"
+            fill="white"
+            fillOpacity="0.95"
+          />
+        </svg>
       </section>
 
       {/* ============== CANDIDATES PREVIEW ============== */}
@@ -470,26 +504,23 @@ export function HomeView({
   );
 }
 
-function StatCard({
+/** Hero stat card — glassmorphism style for the gradient hero background. */
+function HeroStat({
   icon: Icon,
   label,
   value,
-  color,
 }: {
   icon: typeof Vote;
   label: string;
   value: string;
-  color: string;
 }) {
   return (
-    <Card className="glass-card border-blue-100">
-      <CardContent className="p-2 sm:p-3">
-        <div className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br ${color} text-white shadow sm:h-7 sm:w-7`}>
-          <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-        </div>
-        <p className="text-[9px] font-medium uppercase tracking-wide text-blue-600 sm:text-[11px]">{label}</p>
-        <p className="text-base font-black text-blue-950 sm:text-2xl">{value}</p>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl bg-white/15 px-2 py-3 text-center backdrop-blur-md ring-1 ring-white/20 transition hover:bg-white/25 sm:px-4 sm:py-4">
+      <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-lg bg-white/25 sm:h-9 sm:w-9">
+        <Icon className="h-3.5 w-3.5 text-white sm:h-4 sm:w-4" />
+      </div>
+      <p className="text-lg font-black text-white sm:text-2xl">{value}</p>
+      <p className="text-[9px] font-medium uppercase tracking-wide text-blue-50 sm:text-[11px]">{label}</p>
+    </div>
   );
 }

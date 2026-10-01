@@ -1032,6 +1032,9 @@ export default function PageBackground3D({ className, settings: propSettings }: 
   const activeSettings = propSettings !== undefined ? propSettings : storeSettings;
   const info = useMemo(() => extractElectionInfo(activeSettings), [activeSettings]);
 
+  const blur = typeof activeSettings?.bgBlur === "number" ? activeSettings.bgBlur : 12;
+  const opacity = typeof activeSettings?.bgOpacity === "number" ? activeSettings.bgOpacity : 60;
+
   if (!mounted || !webglOk) {
     return null;
   }
@@ -1063,6 +1066,18 @@ export default function PageBackground3D({ className, settings: propSettings }: 
           <ElectionBackgroundScene info={info} />
         </Suspense>
       </Canvas>
+
+      {/* Dynamic Frosted Blur & Dimming Overlay to ensure perfect foreground readability */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backdropFilter: blur > 0 ? `blur(${blur}px)` : "none",
+          WebkitBackdropFilter: blur > 0 ? `blur(${blur}px)` : "none",
+          backgroundColor: `rgba(248, 250, 252, ${opacity / 100})`,
+          transition: "backdrop-filter 0.3s ease, background-color 0.3s ease",
+        }}
+      />
     </div>
   );
 }

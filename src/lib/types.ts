@@ -48,6 +48,8 @@ export interface Settings {
   endTime: string | null;
   totalVoters: number;
   resultsPublic: boolean;
+  bgBlur?: number;
+  bgOpacity?: number;
 }
 
 export interface VoterInfo {

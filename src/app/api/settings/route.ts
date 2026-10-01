@@ -14,6 +14,8 @@ function serialize(s: {
   endTime: Date | null;
   totalVoters: number;
   resultsPublic: boolean;
+  bgBlur?: number;
+  bgOpacity?: number;
 }): Settings {
   return {
     schoolName: s.schoolName,
@@ -25,6 +27,8 @@ function serialize(s: {
     endTime: s.endTime ? s.endTime.toISOString() : null,
     totalVoters: s.totalVoters,
     resultsPublic: s.resultsPublic,
+    bgBlur: typeof s.bgBlur === "number" ? s.bgBlur : 12,
+    bgOpacity: typeof s.bgOpacity === "number" ? s.bgOpacity : 60,
   };
 }
 

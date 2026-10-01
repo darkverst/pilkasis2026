@@ -17,6 +17,8 @@ interface UpdateSettingsBody {
   endTime?: unknown;
   totalVoters?: unknown;
   resultsPublic?: unknown;
+  bgBlur?: unknown;
+  bgOpacity?: unknown;
 }
 
 function isString(v: unknown): v is string {
@@ -48,6 +50,8 @@ function serialize(s: {
   endTime: Date | null;
   totalVoters: number;
   resultsPublic: boolean;
+  bgBlur?: number;
+  bgOpacity?: number;
 }): Settings {
   return {
     schoolName: s.schoolName,
@@ -59,6 +63,8 @@ function serialize(s: {
     endTime: s.endTime ? s.endTime.toISOString() : null,
     totalVoters: s.totalVoters,
     resultsPublic: s.resultsPublic,
+    bgBlur: typeof s.bgBlur === "number" ? s.bgBlur : 12,
+    bgOpacity: typeof s.bgOpacity === "number" ? s.bgOpacity : 60,
   };
 }
 
@@ -81,6 +87,8 @@ export async function PUT(req: NextRequest) {
     if (isBoolean(body.isActive)) data.isActive = body.isActive;
     if (isBoolean(body.resultsPublic)) data.resultsPublic = body.resultsPublic;
     if (isNumber(body.totalVoters)) data.totalVoters = Math.floor(body.totalVoters);
+    if (isNumber(body.bgBlur)) data.bgBlur = Math.max(0, Math.min(40, Math.floor(body.bgBlur)));
+    if (isNumber(body.bgOpacity)) data.bgOpacity = Math.max(0, Math.min(100, Math.floor(body.bgOpacity)));
 
     if (body.startTime === null) {
       data.startTime = null;

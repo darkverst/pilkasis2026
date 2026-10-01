@@ -54,6 +54,7 @@ import {
   EyeOff,
   Search,
   Trash,
+  Sparkles,
 } from "lucide-react";
 import type { Candidate, ElectionResults, Settings, VoterInfo } from "@/lib/types";
 import {
@@ -1822,6 +1823,8 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
   const [scheduledMode, setScheduledMode] = useState(false);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [bgBlur, setBgBlur] = useState<number>(12);
+  const [bgOpacity, setBgOpacity] = useState<number>(60);
   const { toast } = useToast();
   const logoRef = useRef<HTMLInputElement>(null);
   const updateSettingsStore = useAppStore((s) => s.setSettings);
@@ -1839,6 +1842,8 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
         setIsActive(s.isActive);
         setResultsPublic(s.resultsPublic);
         setSchoolLogo(s.schoolLogo);
+        setBgBlur(typeof s.bgBlur === "number" ? s.bgBlur : 12);
+        setBgOpacity(typeof s.bgOpacity === "number" ? s.bgOpacity : 60);
         const hasSchedule = !!s.startTime || !!s.endTime;
         setScheduledMode(hasSchedule);
         setStartTime(s.startTime ? toLocalInput(s.startTime) : "");
@@ -1874,6 +1879,8 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
       isActive,
       resultsPublic,
       schoolLogo,
+      bgBlur,
+      bgOpacity,
     };
     if (scheduledMode) {
       body.startTime = startTime ? new Date(startTime).toISOString() : null;
@@ -2107,6 +2114,97 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
                 {resultsPublic ? "PUBLIK" : "PRIVAT"}
               </Badge>
               <Switch checked={resultsPublic} onCheckedChange={setResultsPublic} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3D Background Blur & Content Contrast Settings */}
+      <Card className="border-blue-100 bg-white/85">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-sm text-blue-950 sm:text-base">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" /> Tampilan Latar Belakang 3D & Kontras Konten
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-blue-700">
+            Atur keburaman (<em>blur</em>) dan kepekatan lapisan latar belakang agar animasi 3D tetap menarik tanpa mengaburkan atau mengganggu keterbacaan teks dan kartu konten pemilihan.
+          </p>
+
+          {/* Blur Level Selection */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-blue-900">Efek Keburaman (Backdrop Blur)</p>
+                <p className="text-[11px] text-blue-600">Semakin tinggi, objek 3D akan semakin lembut menyerupai bokeh/cahaya ambient.</p>
+              </div>
+              <Badge variant="outline" className="border-blue-300 font-mono text-blue-800 bg-white">
+                {bgBlur} px
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+              {[
+                { val: 0, label: "0px (Jernih)" },
+                { val: 6, label: "6px (Halus)" },
+                { val: 12, label: "12px (Standar)" },
+                { val: 20, label: "20px (Lembut)" },
+                { val: 32, label: "32px (Maksimal)" },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => {
+                    setBgBlur(opt.val);
+                    if (settings) updateSettingsStore({ ...settings, bgBlur: opt.val, bgOpacity });
+                  }}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition ${
+                    bgBlur === opt.val
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-white text-blue-800 border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Opacity / Dimming Level */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-blue-900">Kepekatan Lapisan Penutup (Dimming / Opacity)</p>
+                <p className="text-[11px] text-blue-600">Meredupkan latar belakang agar kartu dan teks pemilihan lebih kontras dan mudah dibaca.</p>
+              </div>
+              <Badge variant="outline" className="border-blue-300 font-mono text-blue-800 bg-white">
+                {bgOpacity}%
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              {[
+                { val: 30, label: "30% (Tipis)" },
+                { val: 50, label: "50% (Sedang)" },
+                { val: 65, label: "65% (Standar)" },
+                { val: 85, label: "85% (Pekat / Fokus)" },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => {
+                    setBgOpacity(opt.val);
+                    if (settings) updateSettingsStore({ ...settings, bgBlur, bgOpacity: opt.val });
+                  }}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition ${
+                    bgOpacity === opt.val
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-white text-blue-800 border-blue-200 hover:bg-blue-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </CardContent>

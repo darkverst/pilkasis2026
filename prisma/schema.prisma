@@ -23,6 +23,8 @@ model Settings {
   endTime            DateTime?
   totalVoters        Int      @default(0)
   resultsPublic      Boolean  @default(true)
+  bgBlur             Int      @default(12)
+  bgOpacity          Int      @default(60)
   updatedAt          DateTime @updatedAt
 }
 

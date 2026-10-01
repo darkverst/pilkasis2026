@@ -64,7 +64,7 @@ Karena Vercel berjalan secara *serverless*, gunakan database PostgreSQL cloud gr
 | Nama Variabel | Nilai Contoh | Penjelasan |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | `postgresql://...` | Connection string PostgreSQL dari Neon / Supabase |
-| `ADMIN_PASSWORD` | `panitia2026` | Password untuk masuk ke panel admin panitia |
+| `ADMIN_PASSWORD` | `MGPMINFBWI` | Password untuk masuk ke panel admin panitia |
 | `ADMIN_SESSION_SECRET` | *(string acak 32+ karakter)* | Kunci rahasia enkripsi cookie sesi admin |
 
 > 💡 *Catatan Teknis*: File `vercel.json` dan skrip `vercel-build` dalam repositori ini sudah secara otomatis menjalankan migrasi skema tabel PostgreSQL (`prisma/schema.prod.prisma`) saat proses build berjalan di Vercel.
@@ -117,7 +117,7 @@ cp .env.example .env
 Isi default di `.env` sudah siap untuk development:
 ```env
 DATABASE_URL="file:./db/custom.db"
-ADMIN_PASSWORD="panitia2026"
+ADMIN_PASSWORD="MGPMINFBWI"
 ADMIN_SESSION_SECRET="kunci_rahasia_lokal_32_karakter_acak"
 ```
 
@@ -126,7 +126,7 @@ ADMIN_SESSION_SECRET="kunci_rahasia_lokal_32_karakter_acak"
 # Push skema SQLite lokal
 bun run db:push
 
-# Isi data demo (SMP 2026: 4 Paslon, 90 Token Pemilih, 25 Suara Contoh)
+# Isi data awal (SMP 2026: 4 Paslon, 90 Token Pemilih Bersih Siap Pakai)
 bun run seed
 ```
 
@@ -141,7 +141,7 @@ Buka browser di [http://localhost:3000](http://localhost:3000).
 ## 🔑 Kredensial Default
 
 - **URL Admin**: Klik tab **Admin** di bilah navigasi atau buka `/` lalu navigasikan ke panel admin.
-- **Password Panitia**: Sesuai dengan nilai `ADMIN_PASSWORD` (default: `panitia2026` atau `panitia2025`).
+- **Password Panitia**: Sesuai dengan nilai `ADMIN_PASSWORD` (default: `MGPMINFBWI`).
 
 ---
 

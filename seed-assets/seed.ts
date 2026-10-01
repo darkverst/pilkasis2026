@@ -58,6 +58,8 @@ async function main() {
       isActive: true,
       totalVoters: 90,
       resultsPublic: true,
+      bgBlur: 12,
+      bgOpacity: 60,
     },
     create: {
       id: "default",
@@ -69,6 +71,8 @@ async function main() {
       isActive: true,
       totalVoters: 90,
       resultsPublic: true,
+      bgBlur: 12,
+      bgOpacity: 60,
     },
   });
   console.log(`✓ Settings updated — school: ${SCHOOL_NAME} (Tahun 2026)`);
@@ -190,39 +194,8 @@ async function main() {
     `✓ Created ${studentTokens.length} student tokens (Siswa SMP 2026) + ${teacherTokens.length} teacher tokens (Guru SMP 2026)`
   );
 
-  // 5. Cast sample votes so the live results look alive.
-  //    Distribution: 10 + 7 + 5 + 3 = 25 votes.
-  const voteDistribution = [10, 7, 5, 3];
-  const votesNeeded = voteDistribution.reduce((s, n) => s + n, 0);
-  const allVoters = await db.voter.findMany({
-    where: { hasVoted: false },
-    take: votesNeeded,
-  });
-
-  let voterIdx = 0;
-  for (let i = 0; i < createdCandidates.length; i++) {
-    const candidate = createdCandidates[i];
-    const count = voteDistribution[i] || 0;
-    for (let v = 0; v < count; v++) {
-      const voter = allVoters[voterIdx++];
-      if (!voter) break;
-      await db.vote.create({
-        data: {
-          candidateId: candidate.id,
-          voterId: voter.id,
-        },
-      });
-      await db.voter.update({
-        where: { id: voter.id },
-        data: {
-          hasVoted: true,
-          votedAt: new Date(Date.now() - Math.random() * 3600000),
-          usedToken: true,
-        },
-      });
-    }
-    console.log(`✓ ${count} sample votes cast for Paslon ${candidate.order}: ${candidate.name}`);
-  }
+  // 5. Clean state: 0 sample votes (ready for official election)
+  console.log("✓ Status pemilihan bersih: 0 suara awal (seluruh token pemilih siap digunakan)");
 
   // Print sample tokens for manual testing
   const sampleTokens = await db.voter.findMany({ where: { hasVoted: false }, take: 5 });

@@ -13,7 +13,7 @@ interface AdminSession {
 }
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || "panitia2025";
+  return process.env.ADMIN_PASSWORD || "MGPMINFBWI";
 }
 
 // The session cookie is a signed token, so it cannot be forged by hand-editing
@@ -23,7 +23,7 @@ function getSessionSecret(): string {
   return (
     process.env.ADMIN_SESSION_SECRET ||
     process.env.ADMIN_PASSWORD ||
-    "panitia2025"
+    "MGPMINFBWI"
   );
 }
 

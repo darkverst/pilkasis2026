@@ -218,7 +218,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               Masuk
             </Button>
             <p className="rounded-lg bg-blue-50 p-3 text-center text-xs text-blue-700/80">
-              Default: <span className="font-mono font-bold">panitia2025</span>{" "}
+              Default: <span className="font-mono font-bold">MGPMINFBWI</span>{" "}
               (atur via env <span className="font-mono">ADMIN_PASSWORD</span>)
             </p>
           </div>

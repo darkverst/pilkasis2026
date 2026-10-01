@@ -1,5 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "bun run vercel-build",
-  "installCommand": "bun install"
+  "buildCommand": "npx prisma generate --schema=./prisma/schema.prod.prisma && (npx prisma db push --schema=./prisma/schema.prod.prisma --accept-data-loss || true) && next build"
 }

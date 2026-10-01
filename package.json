@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && ./scripts/copy-standalone-assets.sh",
-    "vercel-build": "prisma generate --schema=./prisma/schema.prod.prisma && prisma db push --schema=./prisma/schema.prod.prisma --accept-data-loss && next build",
+    "vercel-build": "prisma generate --schema=./prisma/schema.prod.prisma && (prisma db push --schema=./prisma/schema.prod.prisma --accept-data-loss || true) && next build",
     "postinstall": "prisma generate",
     "start": "NODE_ENV=production ./scripts/serve-prod.sh 2>&1 | tee server.log",
     "serve:prod": "./scripts/serve-prod.sh",

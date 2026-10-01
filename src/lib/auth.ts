@@ -1,7 +1,5 @@
-// Admin authentication helper (cookie-based signed session)
-// For a school election panitia dashboard. Password is read from env.
-
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import { db } from "@/lib/db";
 
 export const ADMIN_COOKIE_NAME = "osis_admin_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8; // 8 hours
@@ -12,8 +10,39 @@ interface AdminSession {
   expiresAt: number;
 }
 
+export function hashPassword(plain: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(plain, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+export function verifyPasswordHash(plain: string, stored: string): boolean {
+  if (!stored.includes(":")) {
+    return safeEqual(plain, stored);
+  }
+  const [salt, hash] = stored.split(":");
+  const check = scryptSync(plain, salt, 64).toString("hex");
+  return safeEqual(hash, check);
+}
+
 export function getAdminPassword(): string {
   return process.env.ADMIN_PASSWORD || "MGPMINFBWI";
+}
+
+export async function verifyAdminPassword(input: string): Promise<boolean> {
+  const defaultPassword = getAdminPassword();
+  try {
+    const s = await db.settings.findUnique({
+      where: { id: "default" },
+      select: { adminPassword: true },
+    });
+    if (s?.adminPassword) {
+      return verifyPasswordHash(input, s.adminPassword);
+    }
+  } catch (err) {
+    console.error("[verifyAdminPassword] DB error, using default password fallback:", err);
+  }
+  return safeEqual(input, defaultPassword);
 }
 
 // The session cookie is a signed token, so it cannot be forged by hand-editing

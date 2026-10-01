@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   ADMIN_COOKIE_NAME,
   createAdminSession,
-  getAdminPassword,
+  verifyAdminPassword,
 } from "@/lib/auth";
 import { parseJsonBody } from "@/lib/http";
 
@@ -25,7 +25,8 @@ export async function POST(req: Request) {
     const body = parsed.data;
     const password = isString(body.password) ? body.password : "";
 
-    if (password !== getAdminPassword()) {
+    const isValid = await verifyAdminPassword(password);
+    if (!isValid) {
       return NextResponse.json(
         { error: "Password panitia salah" },
         { status: 401 },

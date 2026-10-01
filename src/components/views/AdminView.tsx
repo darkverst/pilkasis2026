@@ -1825,6 +1825,11 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
   const [endTime, setEndTime] = useState("");
   const [bgBlur, setBgBlur] = useState<number>(12);
   const [bgOpacity, setBgOpacity] = useState<number>(60);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const { toast } = useToast();
   const logoRef = useRef<HTMLInputElement>(null);
   const updateSettingsStore = useAppStore((s) => s.setSettings);
@@ -1909,6 +1914,90 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
       toast({ title: msg, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      toast({
+        title: "Perhatian",
+        description: "Password saat ini wajib diisi.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({
+        title: "Perhatian",
+        description: "Password baru minimal 6 karakter.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Perhatian",
+        description: "Konfirmasi password baru tidak cocok.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await adminFetch<{ success: boolean; message: string }>(
+        "/api/admin/password",
+        onLogout,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        },
+      );
+      if (res?.success) {
+        toast({ title: "Berhasil", description: res.message });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setSettings((prev) => (prev ? { ...prev, hasCustomPassword: true } : prev));
+        if (settings) updateSettingsStore({ ...settings, hasCustomPassword: true });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal mengubah password.";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin mereset password panitia kembali ke default (MGPMINFBWI)?",
+      )
+    ) {
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const res = await adminFetch<{ success: boolean; message: string }>(
+        "/api/admin/password",
+        onLogout,
+        {
+          method: "DELETE",
+        },
+      );
+      if (res?.success) {
+        toast({ title: "Berhasil", description: res.message });
+        setSettings((prev) => (prev ? { ...prev, hasCustomPassword: false } : prev));
+        if (settings) updateSettingsStore({ ...settings, hasCustomPassword: false });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal mereset password.";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -2207,6 +2296,105 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
               ))}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Keamanan & Password Panitia */}
+      <Card className="border-blue-100 bg-white/85">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm text-blue-950 sm:text-base">
+            <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" /> Keamanan & Password Panitia
+          </CardTitle>
+          <Badge
+            className={
+              settings?.hasCustomPassword
+                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                : "bg-blue-100 text-blue-700 hover:bg-blue-100"
+            }
+          >
+            {settings?.hasCustomPassword
+              ? "Password Kustom Aktif"
+              : "Password Default (MGPMINFBWI)"}
+          </Badge>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-blue-700">
+            Ubah kata sandi akun panitia untuk mengamankan akses ke panel admin. Password tersimpan terenkripsi dengan aman di database.
+          </p>
+
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-blue-800">Password Saat Ini</Label>
+              <Input
+                type="password"
+                placeholder={
+                  settings?.hasCustomPassword
+                    ? "Masukkan password saat ini"
+                    : "Default: MGPMINFBWI"
+                }
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="border-blue-200"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-blue-800">Password Baru</Label>
+                <Input
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="border-blue-200"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-blue-800">Ulangi Password Baru</Label>
+                <Input
+                  type="password"
+                  placeholder="Ketik ulang password baru"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="border-blue-200"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              <div>
+                {settings?.hasCustomPassword && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={changingPassword || resettingPassword}
+                    onClick={handleResetPassword}
+                    className="border-amber-300 text-amber-800 hover:bg-amber-50"
+                  >
+                    {resettingPassword ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Reset ke Default (MGPMINFBWI)
+                  </Button>
+                )}
+              </div>
+              <Button
+                type="submit"
+                disabled={changingPassword || !currentPassword || !newPassword}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {changingPassword ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="mr-2 h-4 w-4" />
+                )}
+                Ubah Password
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
 

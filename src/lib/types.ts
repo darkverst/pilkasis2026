@@ -50,6 +50,7 @@ export interface Settings {
   resultsPublic: boolean;
   bgBlur?: number;
   bgOpacity?: number;
+  hasCustomPassword?: boolean;
 }
 
 export interface VoterInfo {

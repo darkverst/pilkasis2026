@@ -25,6 +25,7 @@ model Settings {
   resultsPublic      Boolean  @default(true)
   bgBlur             Int      @default(12)
   bgOpacity          Int      @default(60)
+  adminPassword      String?
   updatedAt          DateTime @updatedAt
 }
 

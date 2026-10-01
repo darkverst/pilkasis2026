@@ -28,7 +28,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Panitia OSIS" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/api/favicon",
+    shortcut: "/api/favicon",
+    apple: "/api/favicon",
   },
   openGraph: {
     title: "Pemilihan OSIS Digital",

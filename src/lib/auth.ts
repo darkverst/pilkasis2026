@@ -26,7 +26,7 @@ export function verifyPasswordHash(plain: string, stored: string): boolean {
 }
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || "MGPMINFBWI";
+  return process.env.ADMIN_PASSWORD || "MGMPINFBWI";
 }
 
 export async function verifyAdminPassword(input: string): Promise<boolean> {
@@ -52,7 +52,7 @@ function getSessionSecret(): string {
   return (
     process.env.ADMIN_SESSION_SECRET ||
     process.env.ADMIN_PASSWORD ||
-    "MGPMINFBWI"
+    "MGMPINFBWI"
   );
 }
 

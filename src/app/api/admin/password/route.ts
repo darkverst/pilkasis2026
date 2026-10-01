@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/admin/password -> Reset back to default password (MGPMINFBWI)
+// DELETE /api/admin/password -> Reset back to default password (MGMPINFBWI)
 export async function DELETE(req: NextRequest) {
   try {
     const unauthorized = requireAdmin(req);
@@ -82,7 +82,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Password panitia berhasil direset ke default (MGPMINFBWI)",
+      message: "Password panitia berhasil direset ke default (MGMPINFBWI)",
     });
   } catch (err) {
     console.error("[DELETE /api/admin/password] error:", err);

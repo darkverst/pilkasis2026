@@ -21,7 +21,7 @@
  */
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "MGPMINFBWI";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "MGMPINFBWI";
 
 let passed = 0;
 let failed = 0;

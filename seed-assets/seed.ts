@@ -60,6 +60,7 @@ async function main() {
       resultsPublic: true,
       bgBlur: 12,
       bgOpacity: 60,
+      adminPassword: null,
     },
     create: {
       id: "default",
@@ -73,6 +74,7 @@ async function main() {
       resultsPublic: true,
       bgBlur: 12,
       bgOpacity: 60,
+      adminPassword: null,
     },
   });
   console.log(`✓ Settings updated — school: ${SCHOOL_NAME} (Tahun 2026)`);
@@ -210,6 +212,9 @@ async function main() {
   console.log(
     `\n🎉 Seed complete! ${totalVotes} votes / ${totalVoters} voters (${pct}% turnout) - SMP 2026`
   );
+  console.log("\n🔐 Kredensial Panel Admin Panitia:");
+  console.log("   Password Default: MGMPINFBWI");
+  console.log("   (Dapat diubah kapan saja melalui menu Pengaturan > Keamanan & Password Panitia)\n");
 }
 
 main()

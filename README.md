@@ -64,7 +64,7 @@ Karena Vercel berjalan secara *serverless*, gunakan database PostgreSQL cloud gr
 | Nama Variabel | Nilai Contoh | Penjelasan |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | `postgresql://...` | Connection string PostgreSQL dari Neon / Supabase |
-| `ADMIN_PASSWORD` | `MGPMINFBWI` | Password untuk masuk ke panel admin panitia |
+| `ADMIN_PASSWORD` | `MGMPINFBWI` | Password awal masuk ke panel admin panitia (dapat diubah di panel) |
 | `ADMIN_SESSION_SECRET` | *(string acak 32+ karakter)* | Kunci rahasia enkripsi cookie sesi admin |
 
 > 💡 *Catatan Teknis*: File `vercel.json` dan skrip `vercel-build` dalam repositori ini sudah secara otomatis menjalankan migrasi skema tabel PostgreSQL (`prisma/schema.prod.prisma`) saat proses build berjalan di Vercel.
@@ -117,7 +117,7 @@ cp .env.example .env
 Isi default di `.env` sudah siap untuk development:
 ```env
 DATABASE_URL="file:./db/custom.db"
-ADMIN_PASSWORD="MGPMINFBWI"
+ADMIN_PASSWORD="MGMPINFBWI"
 ADMIN_SESSION_SECRET="kunci_rahasia_lokal_32_karakter_acak"
 ```
 
@@ -141,7 +141,7 @@ Buka browser di [http://localhost:3000](http://localhost:3000).
 ## 🔑 Kredensial Default
 
 - **URL Admin**: Klik tab **Admin** di bilah navigasi atau buka `/` lalu navigasikan ke panel admin.
-- **Password Panitia**: Sesuai dengan nilai `ADMIN_PASSWORD` (default: `MGPMINFBWI`).
+- **Password Panitia**: Default adalah `MGMPINFBWI` (atau nilai dari `ADMIN_PASSWORD` di `.env`). Panitia dapat mengubah password ini kapan saja secara langsung melalui menu **Pengaturan > Keamanan & Password Panitia** di panel admin.
 
 ---
 

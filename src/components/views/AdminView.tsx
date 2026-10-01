@@ -218,7 +218,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               Masuk
             </Button>
             <p className="rounded-lg bg-blue-50 p-3 text-center text-xs text-blue-700/80">
-              Default: <span className="font-mono font-bold">MGPMINFBWI</span>{" "}
+              Default: <span className="font-mono font-bold">MGMPINFBWI</span>{" "}
               (atur via env <span className="font-mono">ADMIN_PASSWORD</span>)
             </p>
           </div>
@@ -1974,7 +1974,7 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
   const handleResetPassword = async () => {
     if (
       !window.confirm(
-        "Apakah Anda yakin ingin mereset password panitia kembali ke default (MGPMINFBWI)?",
+        "Apakah Anda yakin ingin mereset password panitia kembali ke default (MGMPINFBWI)?",
       )
     ) {
       return;
@@ -2314,7 +2314,7 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
           >
             {settings?.hasCustomPassword
               ? "Password Kustom Aktif"
-              : "Password Default (MGPMINFBWI)"}
+              : "Password Default (MGMPINFBWI)"}
           </Badge>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2330,7 +2330,7 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
                 placeholder={
                   settings?.hasCustomPassword
                     ? "Masukkan password saat ini"
-                    : "Default: MGPMINFBWI"
+                    : "Default: MGMPINFBWI"
                 }
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -2377,7 +2377,7 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
                     ) : (
                       <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    Reset ke Default (MGPMINFBWI)
+                    Reset ke Default (MGMPINFBWI)
                   </Button>
                 )}
               </div>

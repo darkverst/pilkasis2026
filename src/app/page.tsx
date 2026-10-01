@@ -49,6 +49,23 @@ export default function Home() {
     };
   }, [setSettings, setResults]);
 
+  // Dynamically update browser tab favicon when school logo is loaded or changed
+  useEffect(() => {
+    if (settings?.schoolLogo) {
+      const iconLinks = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+      if (iconLinks.length > 0) {
+        iconLinks.forEach((link) => {
+          link.href = settings.schoolLogo;
+        });
+      } else {
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.href = settings.schoolLogo;
+        document.head.appendChild(link);
+      }
+    }
+  }, [settings?.schoolLogo]);
+
   // Keep a single global socket connection alive across view switches.
   // On Vercel/serverless without a socket service, getSocket() returns null
   // and we silently fall back to HTTP polling — no socket setup happens here.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-guard";
+import { parseJsonBody } from "@/lib/http";
 import { generateBatch } from "@/lib/auth";
 import { notifyAdminChange } from "@/lib/socket-notify";
 
@@ -31,7 +32,9 @@ export async function POST(req: NextRequest) {
     const unauthorized = requireAdmin(req);
     if (unauthorized) return unauthorized;
 
-    const body = (await req.json()) as GenerateBody;
+    const parsed = await parseJsonBody<GenerateBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     let count = isNumber(body.count) ? Math.floor(body.count) : 0;
     if (!Number.isInteger(count) || count < 1 || count > 500) {

@@ -315,8 +315,10 @@ function OverviewTab({ onLogout }: { onLogout: () => void }) {
       .then((d) => d && setStats(d))
       .catch(() => {});
     fetch("/api/results")
-      .then((r) => r.json())
-      .then((d: ElectionResults) => setResults(d))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: ElectionResults | null) => {
+        if (d && Array.isArray(d.candidates)) setResults(d);
+      })
       .catch(() => {});
   };
   useEffect(() => {
@@ -338,11 +340,11 @@ function OverviewTab({ onLogout }: { onLogout: () => void }) {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((s: Settings) => {
-        const html = generateElectionReportHTML(results, s);
+        const html = generateElectionReportHTML(results, s, stats);
         openReportInNewTab(html);
       })
       .catch(() => {
-        const html = generateElectionReportHTML(results, null);
+        const html = generateElectionReportHTML(results, null, stats);
         openReportInNewTab(html);
       });
   };
@@ -428,7 +430,7 @@ function OverviewTab({ onLogout }: { onLogout: () => void }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!results || results.candidates.length === 0 ? (
+          {!results || !Array.isArray(results.candidates) || results.candidates.length === 0 ? (
             <p className="py-4 text-center text-xs text-blue-700/70 sm:py-6 sm:text-sm">
               Belum ada data.
             </p>
@@ -462,9 +464,9 @@ function OverviewTab({ onLogout }: { onLogout: () => void }) {
         <Button
           onClick={handleReport}
           variant="outline"
-          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+          className="border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold shadow-sm"
         >
-          <FileText className="mr-2 h-4 w-4" /> Laporan (HTML)
+          <Printer className="mr-2 h-4 w-4" /> Cetak Laporan (Berita Acara)
         </Button>
       </div>
 
@@ -1261,41 +1263,98 @@ function TokensTab({ onLogout }: { onLogout: () => void }) {
       toast({ title: "Tidak ada token untuk dicetak." });
       return;
     }
-    const w = window.open("", "_blank", "noopener,noreferrer,width=720,height=900");
-    if (!w) return;
+
     const rows = list
       .map(
         (t, i) => `
         <tr>
-          <td>${i + 1}</td>
-          <td class="mono">${t.token}</td>
-          <td>${t.role === "teacher" ? "Guru" : "Siswa"}</td>
+          <td style="text-align:center;font-weight:bold;">${i + 1}</td>
+          <td class="mono" style="font-size:14px;font-weight:bold;letter-spacing:1px;color:#1e3a8a;">${t.token}</td>
+          <td>${t.role === "teacher" ? "Guru / Staf" : "Siswa"}</td>
           <td>${t.batch || "-"}</td>
-          <td>${t.hasVoted ? "Sudah" : "Belum"}</td>
+          <td style="text-align:center;">
+            <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;background:${
+              t.hasVoted ? "#dcfce7;color:#166534" : "#fef9c3;color:#854d0e"
+            }">
+              ${t.hasVoted ? "Sudah Memilih" : "Belum Memilih"}
+            </span>
+          </td>
         </tr>`,
       )
       .join("");
-    w.document.open();
-    w.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"/>
-      <title>Daftar Token Pemilihan OSIS</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:24px;color:#0a2540}
-        h1{font-size:18px;margin:0 0 4px}
-        p.sub{font-size:12px;color:#6b7280;margin:0 0 16px}
-        table{width:100%;border-collapse:collapse;font-size:12px}
-        th,td{border:1px solid #d6e3ff;padding:6px 8px;text-align:left}
-        th{background:#f1f6ff;font-weight:700}
-        .mono{font-family:monospace}
-        @media print{body{padding:0}}
-      </style></head><body>
-      <h1>Daftar Token Pemilihan OSIS</h1>
-      <p class="sub">Dicetak: ${new Date().toLocaleString("id-ID")} &middot; ${list.length} token</p>
-      <table><thead><tr>
-        <th>No.</th><th>Token</th><th>Peran</th><th>Batch/Kelas</th><th>Status</th>
-      </tr></thead><tbody>${rows}</tbody></table>
-      </body></html>`);
-    w.document.close();
-    setTimeout(() => w.print(), 400);
+
+    const tokenDocHtml = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <title>Daftar Token Pemilihan OSIS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background: #f8fafc; color: #0f172a; }
+    .action-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: #0f172a; color: #fff; padding: 12px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .action-bar button {
+      padding: 8px 16px; font-weight: 600; border-radius: 6px; cursor: pointer; border: none; font-size: 13px;
+    }
+    .btn-print { background: #2563eb; color: #fff; margin-right: 8px; }
+    .btn-close { background: #334155; color: #f8fafc; }
+    .page { max-width: 820px; margin: 20px auto; background: #fff; padding: 32px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    h1 { font-size: 20px; margin: 0 0 4px; text-transform: uppercase; color: #0f172a; }
+    p.sub { font-size: 12px; color: #64748b; margin: 0 0 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 700; color: #1e293b; }
+    .mono { font-family: "Courier New", Courier, monospace; }
+    @media print {
+      body { background: #fff !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .page { box-shadow: none !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+      th { background-color: #f1f5f9 !important; }
+      @page { size: A4 portrait; margin: 12mm 15mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <div style="font-size:14px;font-weight:600;">Daftar Token Pemilihan OSIS (${list.length} token)</div>
+    <div>
+      <button class="btn-print" onclick="window.print()">Cetak Token</button>
+      <button class="btn-close" onclick="window.close()">Tutup</button>
+    </div>
+  </div>
+  <div class="page">
+    <h1>Daftar Token Pemilihan OSIS</h1>
+    <p class="sub">Dicetak: ${new Date().toLocaleString("id-ID")} &middot; Total: ${list.length} token</p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px;text-align:center;">No.</th>
+          <th>Token Rahasia</th>
+          <th>Peran</th>
+          <th>Kelas / Batch</th>
+          <th style="text-align:center;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </div>
+  <script>
+    window.addEventListener("load", function() {
+      setTimeout(function() {
+        try { window.print(); } catch (e) {}
+      }, 400);
+    });
+  </script>
+</body>
+</html>`;
+
+    openReportInNewTab(tokenDocHtml);
   };
 
   const deleteToken = async (t: VoterInfo) => {

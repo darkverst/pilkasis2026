@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { notifyVoteCast, maskToken } from "@/lib/socket-notify";
 import { getElectionStatus } from "@/lib/election-status";
+import { parseJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = (await req.json()) as VoteRequestBody;
+    const parsed = await parseJsonBody<VoteRequestBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const token = isString(body.token) ? body.token.trim() : "";
     const candidateId = isString(body.candidateId) ? body.candidateId.trim() : "";
 

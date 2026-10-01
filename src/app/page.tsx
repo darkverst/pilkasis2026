@@ -39,9 +39,9 @@ export default function Home() {
       })
       .catch(() => {});
     fetch("/api/results")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (alive) setResults(data);
+        if (alive && data && Array.isArray(data.candidates)) setResults(data);
       })
       .catch(() => {});
     return () => {
@@ -75,7 +75,7 @@ export default function Home() {
   return (
     <div className="relative flex min-h-screen flex-col">
       {/* Deepest layer: ambient 3D backdrop, fixed behind everything. */}
-      <PageBackground3D />
+      <PageBackground3D settings={settings} />
 
       <Navbar settings={settings} />
       <main className="mx-auto w-full max-w-[1700px] flex-1 px-3 py-4 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-10 xl:px-16">

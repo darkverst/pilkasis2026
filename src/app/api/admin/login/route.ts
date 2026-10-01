@@ -4,6 +4,7 @@ import {
   createAdminSession,
   getAdminPassword,
 } from "@/lib/auth";
+import { parseJsonBody } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,9 @@ function isString(v: unknown): v is string {
 // Sets an httpOnly cookie `osis_admin_session` valid for 8 hours.
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as LoginRequestBody;
+    const parsed = await parseJsonBody<LoginRequestBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const password = isString(body.password) ? body.password : "";
 
     if (password !== getAdminPassword()) {
@@ -34,6 +37,7 @@ export async function POST(req: Request) {
     res.cookies.set(ADMIN_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 8 * 3600,
     });

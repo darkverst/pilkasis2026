@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-guard";
+import { parseJsonBody } from "@/lib/http";
 import { notifyAdminChange } from "@/lib/socket-notify";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,9 @@ export async function POST(req: NextRequest) {
     const unauthorized = requireAdmin(req);
     if (unauthorized) return unauthorized;
 
-    const body = (await req.json()) as ResetBody;
+    const parsed = await parseJsonBody<ResetBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     if (!isBoolean(body.confirm) || body.confirm !== true) {
       return NextResponse.json(
@@ -42,8 +45,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.scope === "votes") {
-      // Only clear the cast votes (voter state intentionally preserved).
+      // Clear the cast votes and re-arm the voters. Voter rows are preserved,
+      // but hasVoted/usedToken must be cleared too — otherwise every token stays
+      // permanently locked out and nobody can vote after a reset.
       await db.vote.deleteMany({});
+      await db.voter.updateMany({
+        data: { hasVoted: false, usedToken: false, votedAt: null },
+      });
     } else {
       // "all" — order matters because of FK relations: votes → voters → candidates.
       // Settings row is intentionally preserved.

@@ -60,3 +60,12 @@ export interface VoterInfo {
   batch: string | null;
   createdAt: string;
 }
+
+export interface TokenStats {
+  total: number;
+  voted: number;
+  unvoted: number;
+  students: { total: number; voted: number };
+  teachers: { total: number; voted: number };
+}
+

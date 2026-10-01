@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-guard";
+import { parseJsonBody } from "@/lib/http";
 import { notifyAdminChange } from "@/lib/socket-notify";
 import type { Settings } from "@/lib/types";
 
@@ -68,7 +69,9 @@ export async function PUT(req: NextRequest) {
     const unauthorized = requireAdmin(req);
     if (unauthorized) return unauthorized;
 
-    const body = (await req.json()) as UpdateSettingsBody;
+    const parsed = await parseJsonBody<UpdateSettingsBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const data: Record<string, unknown> = {};
     if (isString(body.schoolName)) data.schoolName = body.schoolName;

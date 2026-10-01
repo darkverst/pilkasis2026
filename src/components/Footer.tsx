@@ -14,9 +14,9 @@ export function Footer({ settings }: { settings: Settings | null }) {
           &copy; {year} {settings?.schoolName || SCHOOL_FALLBACK} &middot; Sistem
           Pemilihan OSIS Digital
         </p>
-        <p className="flex items-center gap-1.5">
-          Dibuat dengan <Heart className="h-3 w-3 fill-rose-400 text-rose-400" />{" "}
-          untuk demokrasi sekolah
+        <p className="flex items-center gap-1.5 font-medium">
+          Dibuat dengan <Heart className="h-3.5 w-3.5 fill-rose-500 text-rose-500 inline-block" />{" "}
+          oleh <span className="font-semibold text-blue-900">MGMP Informatika Banyuwangi 2026</span>
         </p>
       </div>
     </footer>

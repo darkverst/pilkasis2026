@@ -77,7 +77,7 @@ function CandidateBar({
   index,
 }: CandidateBarProps) {
   const barRef = useRef<THREE.Mesh>(null);
-  const voteTextRef = useRef<THREE.Object3D>(null);
+  const voteTextRef = useRef<THREE.Group>(null);
   const targetHeight = computeBarHeight(candidate.voteCount, maxVotes);
   const currentHeight = useRef<number>(MIN_BAR_HEIGHT);
 
@@ -169,8 +169,7 @@ function CandidateBar({
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image
               url={candidate.photo}
-              scale={[0.85, 0.85, 1]}
-              radius={0.42}
+              scale={[0.85, 0.85]}
               transparent
               toneMapped={false}
             />
@@ -344,7 +343,7 @@ interface SceneProps {
 }
 
 function ResultsScene({ results }: SceneProps) {
-  const candidates = results.candidates;
+  const candidates = Array.isArray(results?.candidates) ? results.candidates : [];
   const maxVotes = useMemo(() => {
     const m = candidates.reduce((acc, c) => Math.max(acc, c.voteCount), 0);
     return m;
@@ -456,13 +455,13 @@ export default function LiveResults3D({
   // Compute camera distance here too (mirrors scene logic) so we can use it
   // for the Canvas camera prop. We use the same heuristic so the chart fits.
   const cameraDistance = useMemo(() => {
-    const n = results.candidates.length;
+    const n = Array.isArray(results?.candidates) ? results.candidates.length : 0;
     const span = Math.max(1, n - 1) * BAR_SPACING;
     const halfSpan = span / 2 + 1.2;
     const fov = 50;
     const required = halfSpan / Math.tan((fov * Math.PI) / 360) + 1.5;
     return Math.max(7, Math.min(required, 22));
-  }, [results.candidates.length]);
+  }, [results?.candidates?.length]);
 
   const wrapperStyle = { height };
 
@@ -483,7 +482,7 @@ export default function LiveResults3D({
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center px-6">
-            {results.candidates.length === 0 ? (
+            {!Array.isArray(results?.candidates) || results.candidates.length === 0 ? (
               <>
                 <div className="text-lg font-semibold text-primary">
                   Menunggu suara...

@@ -184,7 +184,7 @@ export function ResultsView() {
     );
   }
 
-  const leader = results?.candidates
+  const leader = Array.isArray(results?.candidates)
     ? [...results.candidates].sort((a, b) => b.voteCount - a.voteCount)[0]
     : null;
 
@@ -403,7 +403,7 @@ export function ResultsView() {
                 )}
               </div>
 
-              {!results || results.candidates.length === 0 ? (
+              {!results || !Array.isArray(results.candidates) || results.candidates.length === 0 ? (
                 <p className="py-6 text-center text-sm text-blue-700/70 sm:py-8">
                   Belum ada calon atau suara yang masuk.
                 </p>
@@ -578,7 +578,7 @@ export function ResultsView() {
 }
 
 function Chart2D({ results, fullscreen = false }: { results: ElectionResults | null; fullscreen?: boolean }) {
-  if (!results || results.candidates.length === 0) {
+  if (!results || !Array.isArray(results.candidates) || results.candidates.length === 0) {
     return (
       <div className="flex h-[420px] w-full flex-col items-center justify-center text-center text-blue-700/70">
         <BarChart3 className="mb-2 h-10 w-10 text-blue-200" />

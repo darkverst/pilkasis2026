@@ -106,7 +106,7 @@ export function HomeView({
   }, []);
 
   // Find the current leader for the highlight badge
-  const leader = results?.candidates
+  const leader = Array.isArray(results?.candidates)
     ? [...results.candidates].sort((a, b) => b.voteCount - a.voteCount)[0]
     : null;
 
@@ -306,7 +306,7 @@ export function HomeView({
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {candidates.map((c, idx) => {
-              const result = results?.candidates.find((r) => r.id === c.id);
+              const result = results?.candidates?.find((r) => r.id === c.id);
               const isLeader = leader?.id === c.id && (leader?.voteCount ?? 0) > 0;
               return (
                 <Card

@@ -1,5 +1,7 @@
-// Admin authentication helper (simple cookie-based session)
+// Admin authentication helper (cookie-based signed session)
 // For a school election panitia dashboard. Password is read from env.
+
+import { createHmac, timingSafeEqual } from "crypto";
 
 export const ADMIN_COOKIE_NAME = "osis_admin_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8; // 8 hours
@@ -14,6 +16,28 @@ export function getAdminPassword(): string {
   return process.env.ADMIN_PASSWORD || "panitia2025";
 }
 
+// The session cookie is a signed token, so it cannot be forged by hand-editing
+// base64. The secret falls back to the admin password so a misconfigured deploy
+// still gets unique-but-derived signing material rather than a known constant.
+function getSessionSecret(): string {
+  return (
+    process.env.ADMIN_SESSION_SECRET ||
+    process.env.ADMIN_PASSWORD ||
+    "panitia2025"
+  );
+}
+
+function sign(payload: string): string {
+  return createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export function createAdminSession(): string {
   const now = Date.now();
   const session: AdminSession = {
@@ -21,14 +45,21 @@ export function createAdminSession(): string {
     loginAt: now,
     expiresAt: now + SESSION_TTL_MS,
   };
-  // base64 encode (not encryption — demo only)
-  return Buffer.from(JSON.stringify(session)).toString("base64");
+  const payload = Buffer.from(JSON.stringify(session)).toString("base64url");
+  return `${payload}.${sign(payload)}`;
 }
 
 export function verifyAdminSession(token: string | undefined | null): boolean {
   if (!token) return false;
   try {
-    const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+    const dot = token.lastIndexOf(".");
+    if (dot <= 0) return false;
+
+    const payload = token.slice(0, dot);
+    const signature = token.slice(dot + 1);
+    if (!safeEqual(signature, sign(payload))) return false;
+
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
     if (decoded.role !== "admin") return false;
     if (typeof decoded.expiresAt !== "number") return false;
     return Date.now() < decoded.expiresAt;

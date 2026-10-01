@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-guard";
+import { parseJsonBody } from "@/lib/http";
 import { notifyAdminChange } from "@/lib/socket-notify";
 import type { Candidate } from "@/lib/types";
 
@@ -68,7 +69,9 @@ export async function POST(req: NextRequest) {
     const unauthorized = requireAdmin(req);
     if (unauthorized) return unauthorized;
 
-    const body = (await req.json()) as CreateCandidateBody;
+    const parsed = await parseJsonBody<CreateCandidateBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const name = isString(body.name) ? body.name.trim() : "";
     const className = isString(body.class) ? body.class.trim() : "";

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-guard";
+import { parseJsonBody } from "@/lib/http";
 import { notifyAdminChange } from "@/lib/socket-notify";
 import type { Candidate } from "@/lib/types";
 
@@ -73,7 +74,9 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     if (unauthorized) return unauthorized;
 
     const { id } = await ctx.params;
-    const body = (await req.json()) as UpdateCandidateBody;
+    const parsed = await parseJsonBody<UpdateCandidateBody>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const data: Record<string, unknown> = {};
     if (isString(body.name)) data.name = body.name.trim();

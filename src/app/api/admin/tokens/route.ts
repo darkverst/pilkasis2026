@@ -27,7 +27,7 @@ function serializeVoter(v: {
   };
 }
 
-// GET /api/admin/tokens?role=student|teacher&batch=XXX&unvoted=true
+// GET /api/admin/tokens?role=student|teacher&batch=XXX&unvoted=true&q=search
 export async function GET(req: NextRequest) {
   try {
     const unauthorized = requireAdmin(req);
@@ -36,15 +36,20 @@ export async function GET(req: NextRequest) {
     const role = req.nextUrl.searchParams.get("role");
     const batch = req.nextUrl.searchParams.get("batch");
     const unvoted = req.nextUrl.searchParams.get("unvoted");
+    const q = req.nextUrl.searchParams.get("q")?.trim();
 
     const where: {
       role?: string;
       batch?: string;
       hasVoted?: boolean;
+      OR?: { name?: { contains: string }; token?: { contains: string } }[];
     } = {};
     if (role === "student" || role === "teacher") where.role = role;
     if (batch && batch.trim()) where.batch = batch.trim();
     if (unvoted === "true") where.hasVoted = false;
+    // `q` powers a token/name lookup so the committee can find one voter
+    // without scanning the full list.
+    if (q) where.OR = [{ token: { contains: q } }, { name: { contains: q } }];
 
     const voters = await db.voter.findMany({
       where,

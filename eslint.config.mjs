@@ -44,7 +44,24 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+  ignores: [
+    "node_modules/**",
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "examples/**",
+    "skills",
+    // Mini-services are standalone Node processes with their own deps; the
+    // root tsconfig excludes them too, so keep lint and typecheck in sync.
+    "mini-services/**",
+    // Generated at runtime / by tooling — not source.
+    "*.log",
+    "scripts/*.log",
+    "download/**",
+    "tool-results/**",
+    "db/**",
+  ],
 }];
 
 export default eslintConfig;

@@ -1765,13 +1765,14 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
   const [endTime, setEndTime] = useState("");
   const { toast } = useToast();
   const logoRef = useRef<HTMLInputElement>(null);
-  const setSettingsStore = useAppStore((s) => s.setSettings);
+  const updateSettingsStore = useAppStore((s) => s.setSettings);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((s: Settings) => {
         setSettings(s);
+        updateSettingsStore(s);
         setSchoolName(s.schoolName);
         setElectionTitle(s.electionTitle);
         setElectionDescription(s.electionDescription);
@@ -1834,7 +1835,7 @@ function SettingsTab({ onLogout }: { onLogout: () => void }) {
       );
       if (updated) {
         setSettings(updated);
-        setSettingsStore(updated);
+        updateSettingsStore(updated);
         toast({ title: "Pengaturan disimpan." });
       }
     } catch (e) {
